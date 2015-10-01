@@ -1,0 +1,9 @@
+[Plugin]
+Loader=python3
+Module=addiks-phpide
+IAge=3
+Name=Addiks - PHP IDE
+Description=Allows to build an index an a git workspace to have good PHP-IDE functions
+Authors=Gerrit Addiks <gerrit@addiks.de>
+Copyright=Copyright (C) 2014 Gerrit Addiks
+Website=http://www.addiks.de/gedit-phpide

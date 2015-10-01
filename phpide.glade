@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Generated with glade 3.16.1 -->
+<interface>
+  <requires lib="gtk+" version="3.10"/>
+  <object class="GtkListStore" id="liststoreSearchIndex">
+    <columns>
+      <!-- column-name file_path -->
+      <column type="gchararray"/>
+      <!-- column-name line -->
+      <column type="guint"/>
+      <!-- column-name column -->
+      <column type="guint"/>
+      <!-- column-name title -->
+      <column type="gchararray"/>
+      <!-- column-name index -->
+      <column type="guint"/>
+      <!-- column-name type -->
+      <column type="gchararray"/>
+      <!-- column-name priority -->
+      <column type="guint"/>
+    </columns>
+  </object>
+  <object class="GtkWindow" id="windowSearchIndex">
+    <property name="can_focus">False</property>
+    <property name="title" translatable="yes">Search PHP Index</property>
+    <property name="default_width">750</property>
+    <property name="default_height">250</property>
+    <property name="destroy_with_parent">True</property>
+    <child>
+      <object class="GtkBox" id="boxSearchIndex">
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+        <property name="orientation">vertical</property>
+        <child>
+          <object class="GtkSearchEntry" id="searchentrySearchIndex">
+            <property name="visible">True</property>
+            <property name="can_focus">True</property>
+            <property name="primary_icon_name">edit-find-symbolic</property>
+            <property name="primary_icon_activatable">False</property>
+            <property name="primary_icon_sensitive">False</property>
+            <signal name="search-changed" handler="onIndexSearchChanged" swapped="no"/>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">0</property>
+          </packing>
+        </child>
+        <child>
+          <object class="GtkScrolledWindow" id="scrolledwindowSearchIndex">
+            <property name="visible">True</property>
+            <property name="can_focus">True</property>
+            <property name="hexpand">True</property>
+            <property name="vexpand">True</property>
+            <property name="shadow_type">in</property>
+            <child>
+              <object class="GtkTreeView" id="treeviewSearchIndex">
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="model">liststoreSearchIndex</property>
+                <signal name="row-activated" handler="onSearchIndexRowActivated" swapped="no"/>
+                <child internal-child="selection">
+                  <object class="GtkTreeSelection" id="treeview-selectionSearchIndex"/>
+                </child>
+                <child>
+                  <object class="GtkTreeViewColumn" id="treeviewcolumnSearchIndexIndex">
+                    <property name="sizing">autosize</property>
+                    <property name="title" translatable="yes">No.</property>
+                    <child>
+                      <object class="GtkCellRendererText" id="cellrenderertextSearchIndexIndex"/>
+                      <attributes>
+                        <attribute name="text">4</attribute>
+                      </attributes>
+                    </child>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkTreeViewColumn" id="treeviewcolumnSearchIndexType">
+                    <property name="sizing">autosize</property>
+                    <property name="title" translatable="yes">Type</property>
+                    <child>
+                      <object class="GtkCellRendererText" id="cellrenderertextSearchIndexType"/>
+                      <attributes>
+                        <attribute name="text">5</attribute>
+                      </attributes>
+                    </child>
+                  </object>
+                </child>
+                <child>
+                  <object class="GtkTreeViewColumn" id="treeviewcolumnSearchIndexTitle">
+                    <property name="sizing">autosize</property>
+                    <property name="title" translatable="yes">Title</property>
+                    <property name="expand">True</property>
+                    <child>
+                      <object class="GtkCellRendererText" id="cellrenderertextSearchIndexTitle"/>
+                      <attributes>
+                        <attribute name="text">3</attribute>
+                      </attributes>
+                    </child>
+                  </object>
+                </child>
+              </object>
+            </child>
+          </object>
+          <packing>
+            <property name="expand">False</property>
+            <property name="fill">True</property>
+            <property name="position">1</property>
+          </packing>
+        </child>
+      </object>
+    </child>
+  </object>
+</interface>

@@ -1,0 +1,17 @@
+<ui>
+    <menubar name="MenuBar">
+        <menu name="PhpMenu" action="PhpAction">
+
+            <menuitem name="OpenDeclaration" action="OpenDeclarationAction"/>
+            <menuitem name="OpenTypeView"    action="OpenTypeViewAction"/>
+            <menuitem name="ToggleOutline"   action="ToggleOutlineAction"/>
+            <menuitem name="SearchIndex"     action="SearchIndexAction"/>
+        <!--    <menuitem name="OpenCallView"    action="OpenCallViewAction"/>
+            <menuitem name="OpenDepencyView" action="OpenDepencyViewAction"/> -->
+
+            <separator/>
+            <menuitem name="BuildIndex"      action="BuildIndexAction"/>
+            <menuitem name="UpdateIndex"     action="UpdateIndexAction"/>
+        </menu>
+    </menubar>
+</ui>

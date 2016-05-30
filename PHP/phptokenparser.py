@@ -1,7 +1,22 @@
-from phplexer import token_get_all
-from phplexer import token_name
-from phplexer import token_num
-from helpers import *
+# Copyright (C) 2015 Gerrit Addiks <gerrit@addiks.net>
+# https://github.com/addiks/gedit-phpide
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+from PHP.phplexer import token_get_all
+from PHP.phplexer import token_name
+from PHP.phplexer import token_num
 import operator
 
 T_STRING      = token_num('T_STRING')
@@ -9,7 +24,7 @@ T_VARIABLE    = token_num('T_VARIABLE')
 T_DOC_COMMENT = token_num('T_DOC_COMMENT')
 
 def parse_php_tokens(tokens):
-    
+
     blocks = []
     blockStack = []
     classes = []
@@ -24,7 +39,7 @@ def parse_php_tokens(tokens):
     # find blocks, classes and functions(/methods)
     tokenIndex = 0
     for token in tokens:
-        
+
         if token[1] == 'namespace':
             if tokens[tokenIndex+1][0] == T_STRING:
                 namespace = tokens[tokenIndex+1][1]
@@ -98,7 +113,7 @@ def parse_php_tokens(tokens):
                 block.append(functionIndex) #3
                 break
             functionBlockIndex += 1
-        
+
     # extract members from variables
 
     members = []
@@ -121,9 +136,8 @@ def parse_php_tokens(tokens):
 
     for block in blocks:
         if len(block) > 2:
-            
+
             if block[2] == 'class':
-                
                 tokenIndex  = block[3]
                 classType   = tokens[tokenIndex][1]
                 tokenIndex -= 1
@@ -200,7 +214,7 @@ def parse_php_tokens(tokens):
 
     for block in blocks:
         if len(block) > 2:
-            
+
             if block[2] == 'method':
                 tokenIndex = block[3]
 

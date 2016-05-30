@@ -1,8 +1,23 @@
-from phplexer import token_get_all
-from phplexer import token_name
-from phplexer import token_num
-from helpers import *
-from phptokenparser import parse_php_tokens
+# Copyright (C) 2015 Gerrit Addiks <gerrit@addiks.net>
+# https://github.com/addiks/gedit-phpide
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+from PHP.phplexer import token_get_all
+from PHP.phplexer import token_name
+from PHP.phplexer import token_num
+from PHP.phptokenparser import parse_php_tokens
 import sys
 import os
 import os.path
@@ -16,9 +31,10 @@ import hashlib
 T_DOC_COMMENT = token_num("T_DOC_COMMENT")
 
 class PhpIndex:
-    
-    def __init__(self, index_path, update_callback=None, error_callback=None, finished_callback=None):
+
+    def __init__(self, index_path, update_callback=None, error_callback=None, finished_callback=None, indexPathManager=None):
         self._parsers = {}
+        self._index_path_manager = indexPathManager
         self._index_path = index_path
         self._update_callback = update_callback
         self._error_callback = error_callback
@@ -28,7 +44,7 @@ class PhpIndex:
     ### BUILD API
 
     def build(self, work_dir):
-        
+
         try:
             while work_dir[-1:] == '/':
                 work_dir = work_dir[:-1]
@@ -51,7 +67,7 @@ class PhpIndex:
             self._error_callback("Database error: "+exception.strerror)
 
     def update(self, work_dir):
-        
+
         try:
             while work_dir[-1:] == '/':
                 work_dir = work_dir[:-1]
@@ -61,6 +77,7 @@ class PhpIndex:
             self._all_files_count = 0
             self._done_files_count = 0
 
+            self._remove_deleted(work_dir)
             self._collect_directory(work_dir, True)
             self._update_directory(work_dir)
 
@@ -94,11 +111,11 @@ class PhpIndex:
         elif indexPath.find(".sqlite3")>0:
             from storage.sqlite3 import Sqlite3Storage
             self._storage = Sqlite3Storage(indexPath)
-    
+
         elif indexPath.find("/")>0:
             from storage.shelve import ShelveStorage
             self._storage = ShelveStorage(indexPath)
-    
+
         else:
             raise Exception("Cannot open index '"+indexPath+"'!")
 
@@ -108,36 +125,47 @@ class PhpIndex:
     ### BUILD HELPERS
 
     def _index_internals(self):
-        return
         storage = self._storage
         csvFilePath = os.path.dirname(__file__)+"/php.internals.csv"
         reader = csv.reader(open(csvFilePath, "r"), delimiter=",")
         for typeName, name, value in reader:
             docComment = ""
+            namespace = "\\"
 
             if typeName == 'function':
                 storage.add_function("INTERNAL", namespace, name, docComment, 0, 0)
 
-            elif typeName == 'class':
-                #storage.add_class("INTERNAL", namespace, className, classType, parentName, interfaces, isFinal, isAbstract, docComment, 0, 0)
-                pass
+            elif typeName in ['class', 'interface', 'trait']:
+                className = name
+                classType = typeName
+                parentName = None
+                interfaces = []
+                isFinal = False
+                isAbstract = False
+                storage.add_class("INTERNAL", namespace, className, classType, parentName, interfaces, isFinal, isAbstract, docComment, 0, 0)
 
             elif typeName == 'member':
                 #storage.add_member("INTERNAL", namespace, className, memberName, 0, 0, isStatic, visibility, docComment)
                 pass
-            
+
             elif typeName == 'method':
                 #storage.add_method("INTERNAL", namespace, className, methodName, isStatic, visibility, docComment, 0, 0)
                 pass
-            
-            elif typeName == 'interface':
-                pass # TODO
 
             elif typeName == 'variable':
                 pass
 
             elif typeName == 'constant':
                 storage.add_constant("INTERNAL", name, 0, 0)
+
+    def _remove_deleted(self, directory):
+        allFilesToCheck = self._storage.get_all_files()
+        currentFileCount = 0
+        for filePath in allFilesToCheck:
+            self._update_callback(currentFileCount, len(allFilesToCheck), filePath)
+            currentFileCount += 1
+            if not self.__is_file_indexable(filePath):
+                self._unindex_phpfile(filePath)
 
     def _collect_directory(self, directory, only_updates=False):
         for entry in os.listdir(directory):
@@ -146,7 +174,7 @@ class PhpIndex:
                 self._collect_directory(entryPath, only_updates)
             elif os.path.isfile(entryPath):
                 if self.__is_file_indexable(entryPath):
-                    
+
                     currentMTime = int(os.path.getmtime(entryPath))
                     indexedMTime = int(self._storage.getmtime(entryPath))
 
@@ -176,7 +204,7 @@ class PhpIndex:
                 self._update_directory(entryPath)
             elif os.path.isfile(entryPath):
                 if self.__is_file_indexable(entryPath):
-                    
+
                     currentMTime = int(os.path.getmtime(entryPath))
                     indexedMTime = int(self._storage.getmtime(entryPath))
 
@@ -192,14 +220,15 @@ class PhpIndex:
                             self._index_phpfile(entryPath)
 
     def __is_file_indexable(self, filePath):
-        if filePath[-4:] == ".php":
+        if filePath[-4:] == ".php" and self._index_path_manager.shouldIncludePathInIndex(filePath):
             return True
         else:
             return False
-        
+
     def _index_phpfile(self, filePath):
-        
-        code = file_get_contents(filePath)
+
+        with open(filePath, "r", encoding = "ISO-8859-1") as f:
+            code = f.read()
         tokens, comments = token_get_all(code)
 
         blocks, namespace, use_statements, use_statement_index, constants = parse_php_tokens(tokens)
@@ -229,7 +258,10 @@ class PhpIndex:
                         parentName = use_statements[parentName]
 
                     if parentName != None and parentName[0] != '\\':
-                        parentName = "\\" + parentName
+                        if len(namespace) > 1:
+                            parentName = "\\" + namespace + "\\" + parentName
+                        else:
+                            parentName = "\\" + parentName
 
                     for interface in interfaces:
                         if interface in use_statements:
@@ -262,7 +294,7 @@ class PhpIndex:
                             if tokens[memberKeywordIndex][1] in ['public', 'protected', 'private']:
                                 visibility = tokens[memberKeywordIndex][1]
                             memberKeywordIndex-=1
-                            
+    
                         memberDocComment = ""
                         if tokens[memberKeywordIndex][0] == T_DOC_COMMENT:
                             memberDocComment = tokens[memberKeywordIndex][1]
@@ -279,7 +311,7 @@ class PhpIndex:
                     column = tokens[tokenIndex][3]
 
                     isStatic = "static" in keywords
-                    visibility = intersect(keywords, ['public', 'protected', 'private'])
+                    visibility = list(set(keywords) & set(['public', 'protected', 'private']))
                     if len(visibility) == 1:
                         visibility = visibility[0]
                     else:
@@ -293,7 +325,7 @@ class PhpIndex:
                     doccomment   = block[5]
                     line   = tokens[tokenIndex][2]
                     column = tokens[tokenIndex][3]
-            
+
                     self._storage.add_function(filePath, namespace, functionName, doccomment, line, column)
 
         for constantIndex in constants:

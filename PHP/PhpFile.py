@@ -1,9 +1,24 @@
+# Copyright (C) 2015 Gerrit Addiks <gerrit@addiks.net>
+# https://github.com/addiks/gedit-phpide
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from phplexer import token_get_all
-from phplexer import token_name
-from phplexer import token_num
-from helpers import *
-from phptokenparser import parse_php_tokens
+from PHP.phplexer import token_get_all
+from PHP.phplexer import token_name
+from PHP.phplexer import token_num
+from PHP.get_namespace_by_classname import get_namespace_by_classname
+from PHP.phptokenparser import parse_php_tokens
 import re
 
 T_STRING   = token_num("T_STRING")
@@ -13,14 +28,14 @@ docCommentRegex = re.compile("\\@([\\\\a-zA-Z_-]+)(([\$ \ta-zA-Z0-9\\\\_-]+)*)")
 whitespaceRegex = re.compile("\s+")
 
 class PhpFile:
-    
+
     def __init__(self, code, plugin, storage):
         self.__plugin  = plugin
         self.__storage = storage
         self.update(code)
-        
+
     def update(self, code):
-        
+
         tokens, comments = token_get_all(code)
 
         blocks, namespace, use_statements, use_statement_index, constants = parse_php_tokens(tokens)
@@ -58,10 +73,10 @@ class PhpFile:
 
     def get_declared_position_by_position(self, line, column):
         declaration = self.get_declaration_by_position(line, column)
-        
+
         filePath = None
         line     = None
-        column   = None        
+        column   = None
 
         if declaration[0] == 'method':
             decType, methodName, className = declaration
@@ -71,11 +86,11 @@ class PhpFile:
                 parentClass = self.__storage.get_class_parent(namespace, className)
                 namespace, className = get_namespace_by_classname(parentClass)
                 filePath, line, column = self.__storage.get_method_position(namespace, className, methodName)
-            
+
         elif declaration[0] == 'function':
             namespace, functionName = get_namespace_by_classname(declaration[1])
             filePath, line, column = self.__storage.get_function_position(namespace, functionName)
-            
+
         elif declaration[0] == 'member':
             decType, memberName, className = declaration
             namespace, className = get_namespace_by_classname(className)
@@ -84,7 +99,7 @@ class PhpFile:
                 parentClass = self.__storage.get_class_parent(namespace, className)
                 namespace, className = get_namespace_by_classname(parentClass)
                 filePath, line, column = self.__storage.get_member_position(namespace, className, "$"+memberName)
-            
+
         elif declaration[0] == 'class-constant':
             decType, constantName, className = declaration
             namespace, className = get_namespace_by_classname(className)
@@ -93,15 +108,15 @@ class PhpFile:
                 parentClass = self.__storage.get_class_parent(namespace, className)
                 namespace, className = get_namespace_by_classname(parentClass)
                 filePath, line, column = self.__storage.get_class_const_position(namespace, className, constantName)
-            
+
         elif declaration[0] == 'class':
             namespace, className = get_namespace_by_classname(declaration[1])
             filePath, line, column = self.__storage.get_class_position(namespace, className)
-            
+
         elif declaration[0] == 'constant':
             constantName = declaration[1]
             filePath, line, column = self.__storage.get_constant_position(constantName)
-        
+
         return (filePath, line, column, )
 
     def get_declaration_by_position(self, line, column):
@@ -235,7 +250,7 @@ class PhpFile:
                 className = self.get_type_by_token_index(tokenIndex-2)
                 className = self.__map_classname_by_use_statements(className, tokenIndex)
                 typeId = self.get_member_type(tokens[tokenIndex][1], className)
-                
+
             else:
                 typeId = self.get_type_by_variable(tokenIndex)
 
@@ -257,7 +272,7 @@ class PhpFile:
 
             else: # simple parenthesis
                 typeId = self.get_type_by_token_index(tokenIndex-1)
-    
+
         typeId = self.__map_classname_by_use_statements(typeId, tokenIndex)
         if typeId != None and typeId[0] != '\\':
             typeId = self.__namespace + "\\" + typeId
@@ -270,7 +285,7 @@ class PhpFile:
 
         if needleVariableName == '$this' and self.__is_in_method(tokenIndex):
             typeId = self.__get_class_is_in(tokenIndex)
-            
+
         else:
 
             # find scope to search in
@@ -283,7 +298,7 @@ class PhpFile:
                         scopeBeginIndex = block[0]
                         scopeEndIndex   = block[1]
                         scopeBlock      = block
-            
+
             # try to find declaration in comments ( // @var $foo \Bar)
             for tokenId, phpcode, line, column in self.__comments:
                 if( line >= tokens[scopeBeginIndex][2] and line <= tokens[scopeEndIndex][2] ):
@@ -296,7 +311,7 @@ class PhpFile:
                                 varTypeId = tempVar
                             if variable == needleVariableName:
                                 typeId = varTypeId
-            
+
             # try to resolve by assignment ($foo = new \Bar();)
             if typeId == None:
                 scopeTokenId = scopeBeginIndex
@@ -336,7 +351,7 @@ class PhpFile:
     def get_variables_in_scope(self, tokenIndex):
         variables = []
         tokens = self.__tokens
-        
+
         scopeBeginIndex = 0
         scopeEndIndex = len(tokens)-1
         scopeBlock = None
@@ -346,7 +361,7 @@ class PhpFile:
                     scopeBeginIndex = block[0]
                     scopeEndIndex   = block[1]
                     scopeBlock      = block
-        
+
         for token in tokens[scopeBeginIndex:scopeEndIndex]:
             if token[0] == T_VARIABLE:
                 variables.append(token[1])
@@ -363,7 +378,7 @@ class PhpFile:
             tokenIndex += 1
 
     def __map_classname_by_use_statements(self, className, tokenIndex=None):
-        
+
         if className in ['self', 'static', 'parent'] and tokenIndex != None:
             if className in ['self', 'static']:
                 className = self.__get_class_is_in(tokenIndex)
@@ -372,10 +387,10 @@ class PhpFile:
                 className = self.__get_class_is_in(tokenIndex)
                 namespace, className = get_namespace_by_classname(className)
                 className = self.__storage.get_class_parent(namespace, className)
-            
+
         elif className in self.__use_statements:
             className = self.__use_statements[className]
-        
+
         return className
 
     def __get_return_type_by_doccomment(self, docComment):

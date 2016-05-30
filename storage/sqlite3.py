@@ -2,7 +2,7 @@
 import sqlite3
 
 class Sqlite3Storage:
-    
+
     def __init__(self, index_path):
         self._index_path = index_path
         self._connection = sqlite3.connect(index_path)
@@ -134,6 +134,14 @@ class Sqlite3Storage:
         for mtime, in result:
             break
         return mtimeResult
+
+    def get_all_files(self):
+        cursor = self._cursor
+        resultPaths = []
+        result = cursor.execute("SELECT file_path FROM files", ())
+        for filePath, in result:
+            resultPaths.append(filePath)
+        return resultPaths
 
     ### CLASSES ###
 
@@ -439,7 +447,7 @@ class Sqlite3Storage:
             (filePath, namespace, functionName, docComment, line, column, )
         )
         self.__commitAfterXInserts()
-    
+
     def get_function(self, namespace, functionName):
         cursor = self._cursor
         while len(namespace)>0 and namespace[0] == '\\':
@@ -518,7 +526,7 @@ class Sqlite3Storage:
         for name, in result:
             constants.append(name)
         return constants
-    
+
     ### FULLTEXT SEARCH ###
 
     def do_fulltext_search(self, searchTerms):
@@ -587,11 +595,14 @@ class Sqlite3Storage:
                         columnName = tableName+"."+columnName
                     sqlTermConditions.append(columnName+" LIKE '%"+str(searchTerm)+"%'")
                 sqlConditions.append("(" + " OR ".join(sqlTermConditions) + ")")
-            
+
             sqlStatement = "SELECT "+selectPart+" FROM "+tableName+" WHERE "+ " AND ".join(sqlConditions)
             for path, line, column, title in cursor.execute(sqlStatement):
-                searchResults.append([path, line, column, priority - len(title), typeName, title])
-        
+                titleLength = 0
+                if title is str:
+                    titleLength = len(title)
+                searchResults.append([path, line, column, priority - titleLength, typeName, title])
+
         return searchResults
 
     ### HELPERS ###
@@ -601,7 +612,7 @@ class Sqlite3Storage:
         if self._insert_counter >= 3000:
             self._insert_counter = 0
             self._connection.commit()
-        
+
     def sync(self):
         self._connection.commit()
 

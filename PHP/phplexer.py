@@ -1,3 +1,18 @@
+# Copyright (C) 2015 Gerrit Addiks <gerrit@addiks.net>
+# https://github.com/addiks/gedit-phpide
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import re
 import collections
@@ -144,10 +159,10 @@ def token_num(needleTokenId):
             _token_num_cache[needleTokenId] = tokenNum
             return tokenNum
     raise Exception("No token-num for '"+str(needleTokenId)+"' found!")
-    
+
 # actual php-lexer, gets token-set for given php-code
 def token_get_all(code):
-    
+
     specialChars = [
         '!==', '===',
 
@@ -159,7 +174,7 @@ def token_get_all(code):
         '(', ')', '[', ']', '{', '}',
         ',', '.', ';', ':', '?', 
         '^', '~', '&', '|',
-        
+
         '=', '!', '@', '$'
     ]
 
@@ -240,6 +255,6 @@ def token_get_all(code):
             toknPart = ""
             toknPart = "\n Tokens so far: " + repr(tokens)
             raise Exception(mesgPart+linePart+colmPart+codePart+toknPart)
-                
+
     return (tokens, comments, )
-    
+

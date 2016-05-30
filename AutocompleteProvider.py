@@ -1,44 +1,30 @@
+# Copyright (C) 2015 Gerrit Addiks <gerrit@addiks.net>
+# https://github.com/addiks/gedit-phpide
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from phpfile import PhpFile
-from phplexer import token_name
-from phplexer import token_num
-from gi.repository import Gtk, GtkSource, GObject, Gedit, PeasGtk, Gio
-from helpers import *
+from PHP.PhpFile import PhpFile
+from PHP.get_namespace_by_classname import get_namespace_by_classname
+from AutocompleteProposal import AutocompleteProposal
+from PHP.phplexer import token_name, token_num
+from gi.repository import Gtk, GtkSource, GObject
 
 T_STRING      = token_num("T_STRING")
 T_VARIABLE    = token_num("T_VARIABLE")
 T_DOC_COMMENT = token_num("T_DOC_COMMENT");
 
-class Proposal(GObject.Object, GtkSource.CompletionProposal):
-    __gtype_name__ = "GeditAddiksPHPIDEProposal"
-
-    def __init__(self, word, completion, completionType="none", additionalInfo=None):
-        GObject.Object.__init__(self)
-        self.__word = word
-        self.__completion = completion
-        self.__type = completionType
-        self.__additional_info = additionalInfo
-
-    def get_word(self):
-        return self.__word
-
-    def get_completion(self):
-        return self.__completion
-
-    def get_additional_info(self):
-        return self.__additional_info
-
-    def get_type(self):
-        return self.__type
-
-    def do_get_markup(self):
-        return self.__word
-
-    def do_get_info(self):
-        return "self.__word"
-
-
-class Provider(GObject.Object, GtkSource.CompletionProvider):
+class AutocompleteProvider(GObject.Object, GtkSource.CompletionProvider):
    # __gtype_name__ = "GeditAddiksPHPIDEProvider"
 
     def __init__(self):
@@ -139,13 +125,15 @@ class Provider(GObject.Object, GtkSource.CompletionProvider):
 
         storage   = self.__addiks_plugin.get_index_storage()
         fileIndex = self.__addiks_plugin.get_php_fileindex()
-        tokens    = fileIndex.get_tokens()
         proposals = []
 
         textIter = context.get_iter()
         line   = textIter.get_line()+1
         column = textIter.get_line_index()+1
+
+        tokens    = fileIndex.get_tokens()
         tokenIndex = fileIndex.get_token_index_by_position(line, column)
+
         word = ""
         if tokens[tokenIndex][0] == T_STRING or tokens[tokenIndex-1][1] in ['::', '->']:
             word = tokens[tokenIndex][1]
@@ -156,16 +144,16 @@ class Provider(GObject.Object, GtkSource.CompletionProvider):
         self.colm = token[3]-1
         self.mark_position(textIter)
 
-        rawProposals = []
-        classes = []
-        functions = []
         members = []
+        functions = []
         consts = []
+        variables = []
 
-        if tokens[tokenIndex][1] == '::': # members, methods and class-constants
+        if tokens[tokenIndex][1] == '::': # static members, static methods and class-constants
             returnType = fileIndex.get_type_by_token_index(tokenIndex-1)
             self.type = returnType
             className = returnType
+            members = []
             while True:
                 namespace, className = get_namespace_by_classname(className)
                 functions += storage.get_static_class_methods(namespace, className)
@@ -174,12 +162,12 @@ class Provider(GObject.Object, GtkSource.CompletionProvider):
                 className = storage.get_class_parent(namespace, className)
                 if className == None:
                     break
-            rawProposals = members + consts
-        
-        elif tokens[tokenIndex][1] == '->': # members, methods and class-constants
+
+        elif tokens[tokenIndex][1] == '->': # members and methods
             returnType = fileIndex.get_type_by_token_index(tokenIndex-1)
             self.type = returnType
             className = returnType
+            members = []
             while True:
                 namespace, className = get_namespace_by_classname(className)
                 functions += storage.get_class_methods(namespace, className)
@@ -187,30 +175,93 @@ class Provider(GObject.Object, GtkSource.CompletionProvider):
                 className = storage.get_class_parent(namespace, className)
                 if className == None:
                     break
-            rawProposals = members
-        
+
         elif token[0] == T_VARIABLE: # local or global variables
-            rawProposals += ["$_GET", "$_POST", "$_COOKIE", "$_SESSION", "$_SERVER"]
-            rawProposals += fileIndex.get_variables_in_scope(tokenIndex)
-            # TODO: add local vars
-            
+            variables += ["$_REQUEST", "$_GET", "$_POST", "$_COOKIE", "$_SESSION", "$_SERVER"]
+            variables += fileIndex.get_variables_in_scope(tokenIndex)
+
         else: # classes, constants and functions
             classes   = storage.get_all_classnames(True)
             consts    = storage.get_all_constants()
             functions = storage.get_all_functions()
-            rawProposals = consts
+            for name in classes:
+                fullClassName = name
+                if "\\" in name:
+                    name = name[name.rfind("\\")+1:]
+                if name.startswith(word) or word=="":
+                    proposals.append(AutocompleteProposal(fullClassName, name[len(word):], "class", fullClassName))
 
         for name in functions:
             if name.startswith(word) or word=="":
-                proposals.append(Proposal(name, name[len(word):], "function"))
-        for name in classes:
-            fullClassName = name
-            if "\\" in name:
-                name = name[name.rfind("\\")+1:]
+                proposals.append(AutocompleteProposal(name, name[len(word):], "function"))
+
+        for name in set(members):
             if name.startswith(word) or word=="":
-                proposals.append(Proposal(fullClassName, name[len(word):], "class", fullClassName))
-        for name in sorted(set(rawProposals)):
+                proposals.append(AutocompleteProposal(name, name[len(word):], "member"))
+
+        for name in set(consts):
             if name.startswith(word) or word=="":
-                proposals.append(Proposal(name, name[len(word):]))
-        context.add_proposals(self, proposals, True)
+                proposals.append(AutocompleteProposal(name, name[len(word):], "const"))
+
+        for name in variables:
+            if name.startswith(word) or word=="":
+                proposals.append(AutocompleteProposal(name, name[len(word):], "variable"))
+
+        if len(proposals) < 10000:
+            proposals.sort(key=self._sortKeyForProposal)
+
+            context.add_proposals(self, proposals, True)
+
+    def _sortKeyForProposal(self, proposal):
+        key = None
+
+        if proposal.get_type() == "class":
+            namespaceA, classA = get_namespace_by_classname(proposal.get_word())
+            key = self.__sortKey(classA) + self.__sortKey(namespaceA)
+        else:
+            key = self.__sortKey(proposal.get_word())
+
+        return key
+
+    def __sortKey(self, name):
+        length = len(name)
+        length = str(length).zfill(4)
+        return length + name
+
+    def _sort_proposals(self, proposalA, proposalB):
+        result = 0
+
+        if proposalA.get_type() == "class" and proposalB.get_type() == "class":
+            namespaceA, classA = get_namespace_by_classname(proposalA.get_word())
+            namespaceB, classB = get_namespace_by_classname(proposalB.get_word())
+
+            if classA == classB:
+                result = self.__cmp(namespaceA, namespaceB)
+            else:
+                result = self.__cmp(classA, classB)
+
+        else:
+            result = self.__cmp(proposalA, proposalB)
+
+        return result
+
+    def __cmp(self, nameA, nameB):
+        result = 0
+
+        if type(nameA) is AutocompleteProposal:
+            nameA = nameA.get_word()
+        if type(nameB) is AutocompleteProposal:
+            nameB = nameB.get_word()
+
+        if len(nameA) == len(nameB):
+            if nameA == nameB:
+                result = 0
+            elif nameA > nameB:
+                result = 1
+            else:
+                result = -1
+        else:
+            result = len(nameA) - len(nameB)
+
+        return result
 

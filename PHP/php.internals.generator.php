@@ -2,8 +2,6 @@
 
 $writeHandle = fopen("php.internals.csv", "w");
 
-fputcsv($writeHandle, ['type', 'name', 'value']);
-
 foreach(get_defined_functions()["internal"] as $name){
     fputcsv($writeHandle, ['function', $name, null]);
 }

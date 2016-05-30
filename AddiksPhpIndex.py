@@ -14,7 +14,35 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from AddiksPhpIndex import AddiksPhpIndex
-from AddiksPhpIndexView import AddiksPhpIndexView
-from AddiksPhpIndexWindow import AddiksPhpIndexWindow
+class AddiksPhpIndex:
+
+    def __init__(self):
+        pass
+
+    ### SINGLETON
+
+    __instance = None
+
+    @staticmethod
+    def get():
+        if AddiksPhpIndex.__instance == None:
+            AddiksPhpIndex.__instance = AddiksPhpIndex()
+        return AddiksPhpIndex.__instance
+
+    ### WINDOW / VIEW MANAGEMENT
+
+    windows = []
+
+    def register_window(self, window):
+        if window not in self.windows:
+            self.windows.append(window)
+
+    def unregister_window(self, window):
+        if window in self.windows:
+            self.windows.remove(window)
+
+    def get_window_by_view(self, view):
+        for window in self.windows:
+            if view in window.window.get_views():
+                return window
 

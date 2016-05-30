@@ -1,11 +1,27 @@
 #!/usr/bin/python
 
+# Copyright (C) 2015 Gerrit Addiks <gerrit@addiks.net>
+# https://github.com/addiks/gedit-phpide
+#
+# This program is free software: you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation, either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 from gi.repository import Gtk, Gdk
-from phpindex import PhpIndex
+from PHP.PhpIndex import PhpIndex
 from _thread import start_new_thread
 import sys, os
 
-def __prepare_gtk_process_window(index_filepath, folder_path, windowTitle):
+def __prepare_gtk_process_window(index_filepath, folder_path, windowTitle, indexPathManager=None):
 
     processWindow = Gtk.Window(title=windowTitle)
     processWindow.set_default_size(500, 25)
@@ -54,14 +70,14 @@ def __prepare_gtk_process_window(index_filepath, folder_path, windowTitle):
 
     Gdk.threads_init()
 
-    index = PhpIndex(index_filepath, update_callback, error_callback, finished_callback)
+    index = PhpIndex(index_filepath, update_callback, error_callback, finished_callback, indexPathManager)
     return index
 
-def update_gtk(index_filepath, folder_path):
-    index = __prepare_gtk_process_window(index_filepath, folder_path, "Updating PHP-Index...")
+def update_gtk(index_filepath, folder_path, indexPathManager=None):
+    index = __prepare_gtk_process_window(index_filepath, folder_path, "Updating PHP-Index...", indexPathManager)
     start_new_thread(index.update, (folder_path, ))
 
-def build_gtk(index_filepath, folder_path):
-    index = __prepare_gtk_process_window(index_filepath, folder_path, "Rebuilding PHP-Index...")
+def build_gtk(index_filepath, folder_path, indexPathManager=None):
+    index = __prepare_gtk_process_window(index_filepath, folder_path, "Rebuilding PHP-Index...", indexPathManager)
     start_new_thread(index.build, (folder_path, ))
 

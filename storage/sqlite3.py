@@ -532,7 +532,7 @@ class Sqlite3Storage:
     def do_fulltext_search(self, searchTerms):
         cursor = self._cursor
 
-        # searchResults: [[filePath, line, column, priority, title], ... ]
+        # searchResults: [[filePath, line, column, title], ... ]
         searchResults = []
 
         typeDefs = [
@@ -540,43 +540,36 @@ class Sqlite3Storage:
                 'table':         'files',
                 'searchColumns': ['file_path', "'file'"],
                 'selectPart':    "files.file_path, 1, 1, files.file_path",
-                'priority':      100
             },
             {   'typeName':      'Class',
                 'table':         'classes',
                 'searchColumns': ['namespace', 'name', "'class'"],
                 'selectPart':    "file_path, line, column, namespace || '\\' || name",
-                'priority':      400
             },
             {   'typeName':      'Class-Constant',
                 'table':         'classes_constants',
                 'searchColumns': ['name', 'value', "'class'", "'constant'"],
                 'selectPart':    "file_path, line, column, (SELECT namespace || '\\' || name from classes WHERE class_id == id) || '::' || name",
-                'priority':      300
             },
             {   'typeName':      'Method',
                 'table':         'classes_methods',
                 'searchColumns': ['name', "'method'"],
                 'selectPart':    "file_path, line, column, (SELECT namespace || '\\' || name from classes WHERE class_id == id) || '->' || name || '()'",
-                'priority':      300
             },
             {   'typeName':      'Member',
                 'table':         'classes_members',
                 'searchColumns': ['name', "'member'"],
                 'selectPart':    "file_path, line, column, (SELECT namespace || '\\' || name from classes WHERE class_id == id) || '->' || name",
-                'priority':      300
             },
             {   'typeName':      'Function',
                 'table':         'functions',
                 'searchColumns': ['name', "'function'"],
                 'selectPart':    "file_path, line, column, name",
-                'priority':      300
             },
             {   'typeName':      'Constant',
                 'table':         'constants',
                 'searchColumns': ['name', "'constant'"],
                 'selectPart':    "file_path, line, column, name",
-                'priority':      300
             }
         ]
 
@@ -584,7 +577,6 @@ class Sqlite3Storage:
             tableName  = typeDef['table']
             columns    = typeDef['searchColumns']
             selectPart = typeDef['selectPart']
-            priority   = typeDef['priority']
             typeName   = typeDef['typeName']
 
             sqlConditions = []
@@ -601,7 +593,7 @@ class Sqlite3Storage:
                 titleLength = 0
                 if title is str:
                     titleLength = len(title)
-                searchResults.append([path, line, column, priority - titleLength, typeName, title])
+                searchResults.append([path, line, column, typeName, title])
 
         return searchResults
 

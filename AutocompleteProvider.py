@@ -57,9 +57,11 @@ class AutocompleteProvider(GObject.Object, GtkSource.CompletionProvider):
         textIter.get_buffer().insert(textIter, completion)
 
         if proposal.get_type() == 'class':
-            if proposal.get_word() not in fileIndex.get_use_statements():
-                fullClassName = proposal.get_additional_info()
-                while fullClassName[1] == '\\':
+            fullClassName = proposal.get_additional_info()
+            if fullClassName[0] != '\\':
+                fullClassName = '\\' + fullClassName
+            if fullClassName not in fileIndex.get_use_statements().values():
+                while fullClassName[0] == '\\':
                     fullClassName = fullClassName[1:]
                 useStmsIter = textIter.copy()
                 tokenIndex = fileIndex.get_use_statement_index()
@@ -172,6 +174,7 @@ class AutocompleteProvider(GObject.Object, GtkSource.CompletionProvider):
                 namespace, className = get_namespace_by_classname(className)
                 functions += storage.get_class_methods(namespace, className)
                 members   += storage.get_class_members(namespace, className)
+                print(functions)
                 className = storage.get_class_parent(namespace, className)
                 if className == None:
                     break
@@ -216,8 +219,8 @@ class AutocompleteProvider(GObject.Object, GtkSource.CompletionProvider):
         key = None
 
         if proposal.get_type() == "class":
-            namespaceA, classA = get_namespace_by_classname(proposal.get_word())
-            key = self.__sortKey(classA) + self.__sortKey(namespaceA)
+            namespace, className = get_namespace_by_classname(proposal.get_word())
+            key = self.__sortKey(className) + self.__sortKey(namespace)
         else:
             key = self.__sortKey(proposal.get_word())
 
@@ -227,41 +230,4 @@ class AutocompleteProvider(GObject.Object, GtkSource.CompletionProvider):
         length = len(name)
         length = str(length).zfill(4)
         return length + name
-
-    def _sort_proposals(self, proposalA, proposalB):
-        result = 0
-
-        if proposalA.get_type() == "class" and proposalB.get_type() == "class":
-            namespaceA, classA = get_namespace_by_classname(proposalA.get_word())
-            namespaceB, classB = get_namespace_by_classname(proposalB.get_word())
-
-            if classA == classB:
-                result = self.__cmp(namespaceA, namespaceB)
-            else:
-                result = self.__cmp(classA, classB)
-
-        else:
-            result = self.__cmp(proposalA, proposalB)
-
-        return result
-
-    def __cmp(self, nameA, nameB):
-        result = 0
-
-        if type(nameA) is AutocompleteProposal:
-            nameA = nameA.get_word()
-        if type(nameB) is AutocompleteProposal:
-            nameB = nameB.get_word()
-
-        if len(nameA) == len(nameB):
-            if nameA == nameB:
-                result = 0
-            elif nameA > nameB:
-                result = 1
-            else:
-                result = -1
-        else:
-            result = len(nameA) - len(nameB)
-
-        return result
 

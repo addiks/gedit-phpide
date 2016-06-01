@@ -59,7 +59,7 @@ def parse_php_tokens(tokens):
                 use_statements[use_alias] = use_statement
                 use_statement_index = tokenIndex+2;
 
-        if token[1] == 'class' or token[1] == 'interface' or token[1] == 'trait':
+        if token[1] in ['class', 'interface', 'trait']:
             classes.append(tokenIndex)
 
         if token[1] == 'function':
@@ -73,6 +73,9 @@ def parse_php_tokens(tokens):
 
         if token[1] == 'define':
             constants.append(tokenIndex)
+
+        if token[1] == ";": # for abstract methods
+            blocks.append([tokenIndex, tokenIndex])
 
         if token[1] == "{":
             blockStack.append(tokenIndex)
@@ -242,7 +245,6 @@ def parse_php_tokens(tokens):
                 block.append(methodName)    # 5
                 block.append(keywords)      # 6
                 block.append(docComment)    # 7
-
     return (blocks, namespace, use_statements, use_statement_index, constants)
 
 

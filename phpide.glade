@@ -277,8 +277,6 @@
       <column type="guint"/>
       <!-- column-name type -->
       <column type="gchararray"/>
-      <!-- column-name priority -->
-      <column type="guint"/>
     </columns>
   </object>
   <object class="GtkWindow" id="windowSearchIndex">

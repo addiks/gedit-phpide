@@ -16,6 +16,7 @@
 
 from gi.repository import GLib, Gtk, Gdk
 from os.path import expanduser
+from PHP.get_namespace_by_classname import get_namespace_by_classname
 import traceback
 import re
 
@@ -47,12 +48,10 @@ class AddiksPhpGladeHandler:
 
             # TODO: update priorities by context
 
-            results = sorted(results, key=lambda a: a[3], reverse=True) # sort by priority
+            results.sort(key=self._sortKeyForAutocomplete)
 
             index = 1
-            for filePath, line, column, priority, typeName, title in results:
-                if priority < 0:
-                    priority = 0
+            for filePath, line, column, typeName, title in results:
                 rowIter = listStore.append()
                 listStore.set_value(rowIter, 0, filePath)
                 listStore.set_value(rowIter, 1, line)
@@ -60,8 +59,25 @@ class AddiksPhpGladeHandler:
                 listStore.set_value(rowIter, 3, title)
                 listStore.set_value(rowIter, 4, index)
                 listStore.set_value(rowIter, 5, typeName)
-                listStore.set_value(rowIter, 6, priority)
                 index += 1
+
+    def _sortKeyForAutocomplete(self, result):
+        key = None
+        filePath, line, column, typeName, title = result
+
+        if typeName == "Class":
+            namespace, className = get_namespace_by_classname(title)
+            key = self.__sortKey(className) + self.__sortKey(namespace)
+        else:
+            key = self.__sortKey(title)
+
+        return key
+
+    def __sortKey(self, name):
+        if name != None:
+            length = len(name)
+            length = str(length).zfill(4)
+            return length + name
 
     def onSearchIndexRowActivated(self, treeView, treePath, treeViewColumn, userData=None):
 

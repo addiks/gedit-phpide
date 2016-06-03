@@ -19,10 +19,12 @@ from PHP.get_namespace_by_classname import get_namespace_by_classname
 from AutocompleteProposal import AutocompleteProposal
 from PHP.phplexer import token_name, token_num
 from gi.repository import Gtk, GtkSource, GObject
+import re
 
 T_STRING      = token_num("T_STRING")
 T_VARIABLE    = token_num("T_VARIABLE")
 T_DOC_COMMENT = token_num("T_DOC_COMMENT");
+T_COMMENT     = token_num("T_COMMENT");
 
 class AutocompleteProvider(GObject.Object, GtkSource.CompletionProvider):
    # __gtype_name__ = "GeditAddiksPHPIDEProvider"
@@ -137,6 +139,14 @@ class AutocompleteProvider(GObject.Object, GtkSource.CompletionProvider):
         tokenIndex = fileIndex.get_token_index_by_position(line, column)
 
         word = ""
+        if tokens[tokenIndex][0] == T_COMMENT:
+            lineInComment = line - tokens[tokenIndex][2]
+            columnInComment = column - tokens[tokenIndex][3] - 1
+            commentLines = tokens[tokenIndex][1].split("\n")
+            commentLine = commentLines[lineInComment]
+            while re.match("[a-zA-Z0-9_]", commentLine[columnInComment]):
+                word = commentLine[columnInComment] + word
+                columnInComment -= 1
         if tokens[tokenIndex][0] == T_STRING or tokens[tokenIndex-1][1] in ['::', '->']:
             word = tokens[tokenIndex][1]
             tokenIndex -= 1
@@ -174,7 +184,6 @@ class AutocompleteProvider(GObject.Object, GtkSource.CompletionProvider):
                 namespace, className = get_namespace_by_classname(className)
                 functions += storage.get_class_methods(namespace, className)
                 members   += storage.get_class_members(namespace, className)
-                print(functions)
                 className = storage.get_class_parent(namespace, className)
                 if className == None:
                     break

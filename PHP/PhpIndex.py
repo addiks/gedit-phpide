@@ -225,6 +225,10 @@ class PhpIndex:
         else:
             return False
 
+    def reindex_phpfile(self, filePath):
+        self._unindex_phpfile(filePath)
+        self._index_phpfile(filePath)
+
     def _index_phpfile(self, filePath):
 
         with open(filePath, "r", encoding = "ISO-8859-1") as f:

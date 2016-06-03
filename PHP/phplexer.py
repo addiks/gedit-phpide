@@ -208,6 +208,7 @@ def token_get_all(code):
                         tokenText = match.group()
                         code = code[len(tokenText):]
                         if tokenId == 'T_COMMENT':
+                            tokens.append([tokenNum, tokenText, row, col])
                             comments.append([tokenNum, tokenText, row, col])
                         elif tokenId != 'T_WHITESPACE':
                             tokens.append([tokenNum, tokenText, row, col])
@@ -219,7 +220,7 @@ def token_get_all(code):
                             col += len(tokenText)
                         if tokenId == "T_CLOSE_TAG":
                             inPhp = False
-                        break # breaks the for
+                        break
             if code[0:1] in specialChars and not found:
                 tokens.append([token_num('T_SINGLE_CHAR'), code[0:1], row, col])
                 code = code[1:]

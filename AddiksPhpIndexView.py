@@ -15,6 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from gi.repository import GObject, Gedit
+from PHP.PhpIndex import PhpIndex
 from AddiksPhpIndex import AddiksPhpIndex
 from AutocompleteProvider import AutocompleteProvider
 
@@ -34,6 +35,7 @@ class AddiksPhpIndexView(GObject.Object, Gedit.ViewActivatable):
 
         document = self.view.get_buffer()
         document.connect("changed", self.__on_document_changed)
+        document.connect("saved", self.__on_document_saved)
 
     def do_deactivate(self):
         pass
@@ -42,13 +44,21 @@ class AddiksPhpIndexView(GObject.Object, Gedit.ViewActivatable):
         pass
 
     def __on_document_changed(self, document):
-
         # make sure the php-file-index gets updated when the text get changed
         window = AddiksPhpIndex.get().get_window_by_view(self.view)
         if window != None and document.get_location() != None:
             filepath = document.get_location().get_path()
             window.invalidate_php_fileindex(filepath)
         return False
+
+    def __on_document_saved(self, document, userData=None):
+        window = AddiksPhpIndex.get().get_window_by_view(self.view)
+        if window != None and document.get_location() != None:
+            filepath = document.get_location().get_path()
+            indexFilepath = window.get_index_filepath()
+            indexPathManager = window.get_index_path_manager()
+            index = PhpIndex(indexFilepath, indexPathManager=indexPathManager)
+            index.reindex_phpfile(filepath)
 
     ### HELPERS
 

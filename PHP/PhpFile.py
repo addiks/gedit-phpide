@@ -419,7 +419,7 @@ class PhpFile:
 
     def __get_class_is_in(self, tokenIndex):
         for block in self.__blocks:
-            if block[2] == 'class' and block[0] < tokenIndex and block[1] > tokenIndex:
+            if len(block)>2 and block[2] == 'class' and block[0] < tokenIndex and block[1] > tokenIndex:
                 return block[4]
         return None
 

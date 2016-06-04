@@ -278,15 +278,10 @@ class AddiksPhpIndexWindow(GObject.Object, Gedit.WindowActivatable):
     def on_open_declaration_view(self, action, data=None):
         if not self.is_index_built():
             return self.on_index_not_build()
-        print("A")
         line, column = self.get_current_cursor_position()
-        print("B")
         if line != None and column != None:
-            print("C")
             filePath, line, column = self.get_php_fileindex().get_declared_position_by_position(line, column)
-            print("D")
             self.open_by_position(filePath, line, column)
-            print("E")
 
     def on_search_index(self, action, data=None):
         if not self.is_index_built():
@@ -315,7 +310,6 @@ class AddiksPhpIndexWindow(GObject.Object, Gedit.WindowActivatable):
                 className = namespace + '\\' + className
 
             hierarchy = self.get_class_hierarchy(className)
-
             if hierarchy != None:
 
                 # create treestore from hierarchy

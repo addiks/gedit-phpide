@@ -212,9 +212,11 @@ class Sqlite3Storage:
             classId, parentName = row
         return parentName
 
-    def get_class_children(self, className):
+    def get_class_children(self, className, includeInteraceImplementations=True):
         cursor = self._cursor
         children = []
+        if className[0] != '\\':
+            className = '\\' + className
         result = cursor.execute(
             "SELECT namespace, name "
             "FROM classes "
@@ -225,6 +227,18 @@ class Sqlite3Storage:
             if namespace[-1:] != '\\':
                 namespace += "\\"
             children.append(namespace + name)
+        if includeInteraceImplementations:
+            result = cursor.execute(
+                "SELECT c.namespace, c.name "
+                "FROM classes_interfaces_uses i "
+                "LEFT JOIN classes c ON(i.class_id = c.id) "
+                "WHERE i.name=?",
+                (className, )
+            )
+            for namespace, name in result:
+                if namespace[-1:] != '\\':
+                    namespace += "\\"
+                children.append(namespace + name)
         return children
 
     def get_all_classnames(self, withNamespaces=True):

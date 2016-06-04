@@ -152,6 +152,10 @@ class PhpFile:
                 className = self.__map_classname_by_use_statements(tokens[tokenIndex][1], tokenIndex)
                 declaration = ['class', className, None]
 
+            elif tokens[tokenIndex+1][0] == T_VARIABLE:
+                className = self.__map_classname_by_use_statements(tokens[tokenIndex][1], tokenIndex)
+                declaration = ['class', className, None]
+
             else:
                 declaration = ['constant', tokens[tokenIndex][1], None]
 

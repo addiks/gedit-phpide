@@ -94,18 +94,40 @@ class AutocompleteProvider(GObject.Object, GtkSource.CompletionProvider):
 
     def do_get_info_widget(self, proposal):
         widget = Gtk.ScrolledWindow()
-        widget.set_size_request(300, 32)
+        widget.set_size_request(500, 300)
         self._info_label = Gtk.Label()
         self._info_label.set_text(proposal.get_word())
+        self.do_update_info(proposal)
         widget.add(self._info_label)
         widget.show_all()
         return widget # or some Gtk.Widget with extra info
 
-    def do_update_info(self, proposal, info):
+    def do_update_info(self, proposal, info = None):
         # proposal (GtkSource.CompletionProposal)
         # info (GtkSource.CompletionInfo)
-        if proposal.get_additional_info() != None:
-            self._info_label.set_text(proposal.get_additional_info())
+        storage   = self.__addiks_plugin.get_index_storage()
+
+        labelText = None
+        if proposal.get_type() == 'function':
+            labelText = storage.get_constant_doccomment(proposal.get_word())
+
+        elif proposal.get_type() == 'class':
+            if proposal.get_additional_info() != None:
+                fullClassName = proposal.get_additional_info()
+                namespace, className = get_namespace_by_classname(fullClassName)
+                labelText = storage.get_class_doccomment(namespace, className)
+
+        elif proposal.get_type() == 'member':
+            labelText = storage.get_constant_doccomment(proposal.get_word())
+
+        elif proposal.get_type() == 'const':
+            labelText = storage.get_constant_doccomment(proposal.get_word())
+
+        else:
+            print("unknown: " + proposal.get_type())
+
+        if labelText != None:
+            self._info_label.set_text(labelText)
 
     def do_get_name(self):
         if self.type == None:

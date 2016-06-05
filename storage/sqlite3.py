@@ -256,6 +256,20 @@ class Sqlite3Storage:
             classNames.append(className)
         return classNames
 
+    def get_class_doccomment(self, namespace, className):
+        cursor = self._cursor
+        result = cursor.execute(
+            "SELECT id, doccomment "
+            "FROM classes "
+            "WHERE namespace = ? AND name = ?",
+            (namespace, className)
+        )
+        resultDocComment = None
+        for class_id, docComment in result:
+            resultDocComment = docComment
+            break
+        return resultDocComment
+
     ### CLASS-CONSTANT ###
 
     def add_class_constant(self, filePath, namespace, className, name, value, docComment, line, column):
@@ -298,6 +312,21 @@ class Sqlite3Storage:
         if row != None:
             line, column = row
         return (filePath, line, column, )
+
+    def get_class_constant_doccomment(self, namespace, className, constantName):
+        cursor = self._cursor
+        classId, filePath = self.get_class_id(namespace, className)
+        result = cursor.execute(
+            "SELECT id, doccomment "
+            "FROM classes_constants "
+            "WHERE class_id = ? AND name = ?",
+            (classId, constantName)
+        )
+        resultDocComment = None
+        for class_id, docComment in result:
+            resultDocComment = docComment
+            break
+        return resultDocComment
 
     ### METHODS ###
 
@@ -379,6 +408,21 @@ class Sqlite3Storage:
             line, column = row
         return (filePath, line, column, )
 
+    def get_method_doccomment(self, namespace, className, methodName):
+        cursor = self._cursor
+        classId, filePath = self.get_class_id(namespace, className)
+        result = cursor.execute(
+            "SELECT id, doccomment "
+            "FROM classes_methods "
+            "WHERE class_id = ? AND name = ?",
+            (classId, methodName)
+        )
+        resultDocComment = None
+        for class_id, docComment in result:
+            resultDocComment = docComment
+            break
+        return resultDocComment
+
     ### MEMBERS ###
 
     def add_member(self, filePath, namespace, className, memberName, line, column, isStatic, visibility, docComment):
@@ -449,6 +493,21 @@ class Sqlite3Storage:
             line, column = row
         return (filePath, line, column, )
 
+    def get_member_doccomment(self, namespace, className, memberName):
+        cursor = self._cursor
+        classId, filePath = self.get_class_id(namespace, className)
+        result = cursor.execute(
+            "SELECT id, doccomment "
+            "FROM classes_members "
+            "WHERE class_id = ? AND name = ?",
+            (classId, memberName)
+        )
+        resultDocComment = None
+        for class_id, docComment in result:
+            resultDocComment = docComment
+            break
+        return resultDocComment
+
     ### FUNCTIONS ###
 
     def add_function(self, filePath, namespace, functionName, docComment, line, column):
@@ -505,6 +564,20 @@ class Sqlite3Storage:
             file_path, line, column = row
         return (file_path, line, column, )
 
+    def get_function_doccomment(self, namespace, functionName):
+        cursor = self._cursor
+        result = cursor.execute(
+            "SELECT id, doccomment "
+            "FROM functions "
+            "WHERE namespace = ? AND name = ?",
+            (namespace, functionName)
+        )
+        resultDocComment = None
+        for class_id, docComment in result:
+            resultDocComment = docComment
+            break
+        return resultDocComment
+
     ### CONSTANTS ###
 
     def add_constant(self, filePath, constantName, line, column):
@@ -540,6 +613,9 @@ class Sqlite3Storage:
         for name, in result:
             constants.append(name)
         return constants
+
+    def get_constant_doccomment(self, constantName):
+        return ''; # no doccomment in db yet
 
     ### FULLTEXT SEARCH ###
 

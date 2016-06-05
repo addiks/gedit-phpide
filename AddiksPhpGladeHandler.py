@@ -62,7 +62,7 @@ class AddiksPhpGladeHandler:
                 index += 1
 
     def _sortKeyForAutocomplete(self, result):
-        key = None
+        key = ""
         filePath, line, column, typeName, title = result
 
         if typeName == "Class":
@@ -78,6 +78,7 @@ class AddiksPhpGladeHandler:
             length = len(name)
             length = str(length).zfill(4)
             return length + name
+        return ""
 
     def onSearchIndexRowActivated(self, treeView, treePath, treeViewColumn, userData=None):
 

@@ -83,7 +83,8 @@ class Sqlite3Storage:
                 "doccomment  SMALLTEXT, "
                 "file_path   VARCHAR(256) NOT NULL, "
                 "line        INTEGER, "
-                "column      SMALLINT"
+                "column      SMALLINT, "
+                "arguments   SMALLTEXT "
             ")"
         );
         cursor.execute(
@@ -345,15 +346,15 @@ class Sqlite3Storage:
 
     ### METHODS ###
 
-    def add_method(self, filePath, namespace, className, methodName, isStatic, visibility, docComment, line, column):
+    def add_method(self, filePath, namespace, className, methodName, isStatic, visibility, docComment, line, column, arguments):
         cursor = self._cursor
         while len(namespace)>0 and namespace[0] == '\\':
             namespace = namespace[1:]
         classId, filePath = self.get_class_id(namespace, className)
         cursor.execute(
-            "INSERT INTO classes_methods (file_path, class_id, name, is_static, visibility, doccomment, line, column) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            (filePath, classId, methodName, int(isStatic), visibility, docComment, line, column, )
+            "INSERT INTO classes_methods (file_path, class_id, name, is_static, visibility, doccomment, line, column, arguments) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (filePath, classId, methodName, int(isStatic), visibility, docComment, line, column, repr(arguments))
         )
         self.__commitAfterXInserts()
 
@@ -437,6 +438,21 @@ class Sqlite3Storage:
             resultDocComment = docComment
             break
         return resultDocComment
+
+    def get_method_arguments(self, namespace, className, methodName):
+        cursor = self._cursor
+        classId, filePath = self.get_class_id(namespace, className)
+        result = cursor.execute(
+            "SELECT id, arguments "
+            "FROM classes_methods "
+            "WHERE class_id = ? AND name = ?",
+            (classId, methodName)
+        )
+        resultArguments = None
+        for class_id, arguments in result:
+            resultArguments = eval(arguments)
+            break
+        return resultArguments
 
     ### MEMBERS ###
 
@@ -592,6 +608,20 @@ class Sqlite3Storage:
             resultDocComment = docComment
             break
         return resultDocComment
+
+    def get_function_arguments(self, namespace, functionName):
+        cursor = self._cursor
+        result = cursor.execute(
+            "SELECT id, arguments "
+            "FROM functions "
+            "WHERE namespace = ? AND name = ?",
+            (classId, functionName)
+        )
+        resultArguments = None
+        for class_id, arguments in result:
+            resultArguments = eval(arguments)
+            break
+        return resultArguments
 
     ### CONSTANTS ###
 

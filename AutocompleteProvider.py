@@ -50,11 +50,40 @@ class AutocompleteProvider(GObject.Object, GtkSource.CompletionProvider):
         # proposal (GtkSource.CompletionProposal)
         # textIter (Gtk.TextIter)
         completion = proposal.get_completion()
+        storage   = self.__addiks_plugin.get_index_storage()
         fileIndex = self.__addiks_plugin.get_php_fileindex()
         tokens = fileIndex.get_tokens()
 
-        if proposal.get_type() == 'function':
-            completion += "()"
+        if proposal.get_type() in ['function', 'method']:
+            line = textIter.get_line() + 1
+            column = textIter.get_line_offset() + 1
+            tokenIndex = fileIndex.get_token_index_by_position(line, column)
+            if len(tokens) == tokenIndex-1 or tokens[tokenIndex+1][1] != "(":
+                completion += "("
+
+                arguments = []
+                if proposal.get_type() == 'function':
+                    arguments = storageget_function_arguments(namespace, proposal.get_word())
+
+                elif proposal.get_type() == 'method':
+                    if proposal.get_additional_info() != None:
+                        fullClassName = proposal.get_additional_info()
+                        namespace, className = get_namespace_by_classname(fullClassName)
+                        arguments = storage.get_method_arguments(namespace, className, proposal.get_word())
+
+                if len(arguments) > 0:
+                    argumentsCodes = []
+                    for argumentRow in arguments:
+                        if len(argumentRow) > 2:
+                            argumentType, argumentsCode, argumentDefaultValue = argumentRow
+                        else:
+                            argumentDefaultValue = None
+                            argumentType, argumentsCode = argumentRow
+                        argumentsCodes.append(argumentsCode)
+                    completion += ", ".join(argumentsCodes)
+
+                if len(tokens) == tokenIndex-1 or tokens[tokenIndex+1][1] != ")":
+                    completion += ")"
 
         textIter.get_buffer().insert(textIter, completion)
 
@@ -109,6 +138,9 @@ class AutocompleteProvider(GObject.Object, GtkSource.CompletionProvider):
 
         labelText = None
         if proposal.get_type() == 'function':
+            labelText = storage.get_function_doccomment(proposal.get_word())
+
+        elif proposal.get_type() == 'const':
             labelText = storage.get_constant_doccomment(proposal.get_word())
 
         elif proposal.get_type() == 'class':
@@ -117,11 +149,17 @@ class AutocompleteProvider(GObject.Object, GtkSource.CompletionProvider):
                 namespace, className = get_namespace_by_classname(fullClassName)
                 labelText = storage.get_class_doccomment(namespace, className)
 
-        elif proposal.get_type() == 'member':
-            labelText = storage.get_constant_doccomment(proposal.get_word())
+        elif proposal.get_type() == 'method':
+            if proposal.get_additional_info() != None:
+                fullClassName = proposal.get_additional_info()
+                namespace, className = get_namespace_by_classname(fullClassName)
+                labelText = storage.get_method_doccomment(namespace, className, proposal.get_word())
 
-        elif proposal.get_type() == 'const':
-            labelText = storage.get_constant_doccomment(proposal.get_word())
+        elif proposal.get_type() == 'member':
+            if proposal.get_additional_info() != None:
+                fullClassName = proposal.get_additional_info()
+                namespace, className = get_namespace_by_classname(fullClassName)
+                labelText = storage.get_member_doccomment(namespace, className, proposal.get_word())
 
         else:
             print("unknown: " + proposal.get_type())
@@ -180,8 +218,11 @@ class AutocompleteProvider(GObject.Object, GtkSource.CompletionProvider):
 
         members = []
         functions = []
+        methods = []
         consts = []
         variables = []
+
+        className = None
 
         if tokens[tokenIndex][1] == '::': # static members, static methods and class-constants
             returnType = fileIndex.get_type_by_token_index(tokenIndex-1)
@@ -190,7 +231,7 @@ class AutocompleteProvider(GObject.Object, GtkSource.CompletionProvider):
             members = []
             while True:
                 namespace, className = get_namespace_by_classname(className)
-                functions += storage.get_static_class_methods(namespace, className)
+                methods   += storage.get_static_class_methods(namespace, className)
                 members   += storage.get_static_class_members(namespace, className)
                 consts    += storage.get_class_constants(namespace, className)
                 className = storage.get_class_parent(namespace, className)
@@ -202,12 +243,13 @@ class AutocompleteProvider(GObject.Object, GtkSource.CompletionProvider):
             self.type = returnType
             className = returnType
             members = []
+            parentClassName = className
             while True:
-                namespace, className = get_namespace_by_classname(className)
-                functions += storage.get_class_methods(namespace, className)
-                members   += storage.get_class_members(namespace, className)
-                className = storage.get_class_parent(namespace, className)
-                if className == None:
+                namespace, parentClassName = get_namespace_by_classname(parentClassName)
+                methods   += storage.get_class_methods(namespace, parentClassName)
+                members   += storage.get_class_members(namespace, parentClassName)
+                parentClassName = storage.get_class_parent(namespace, parentClassName)
+                if parentClassName == None:
                     break
 
         elif token[0] == T_VARIABLE: # local or global variables
@@ -225,13 +267,17 @@ class AutocompleteProvider(GObject.Object, GtkSource.CompletionProvider):
                 if name.startswith(word) or word=="":
                     proposals.append(AutocompleteProposal(fullClassName, name[len(word):], "class", fullClassName))
 
-        for name in functions:
+        for name in methods:
             if name.startswith(word) or word=="":
-                proposals.append(AutocompleteProposal(name, name[len(word):], "function"))
+                proposals.append(AutocompleteProposal(name, name[len(word):], "method", className))
 
         for name in set(members):
             if name.startswith(word) or word=="":
-                proposals.append(AutocompleteProposal(name, name[len(word):], "member"))
+                proposals.append(AutocompleteProposal(name, name[len(word):], "member", className))
+
+        for name in functions:
+            if name.startswith(word) or word=="":
+                proposals.append(AutocompleteProposal(name, name[len(word):], "function"))
 
         for name in set(consts):
             if name.startswith(word) or word=="":

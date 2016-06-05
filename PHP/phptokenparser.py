@@ -236,6 +236,37 @@ def parse_php_tokens(tokens):
                 methodName = tokens[tokenIndex][1]
                 block[3] = tokenIndex
 
+                arguments = []
+                tokenIndex += 1
+                if tokens[tokenIndex][1] == '(':
+                    while True:
+                        argument = []
+                        tokenIndex += 1
+                        if tokens[tokenIndex][1] == ')':
+                            break
+                        if tokens[tokenIndex][0] in [T_STRING]:
+                            argument.append(tokens[tokenIndex][1])
+                            tokenIndex += 1
+                        else:
+                            argument.append(None)
+                        if tokens[tokenIndex][0] == T_VARIABLE:
+                            argument.append(tokens[tokenIndex][1])
+                            tokenIndex += 1
+                        if tokens[tokenIndex][1] == '=':
+                            defaultValue = ""
+                            while tokens[tokenIndex][1] not in [',', ')']:
+                                tokenIndex += 1
+                                if tokens[tokenIndex][1] != ')':
+                                    defaultValue += tokens[tokenIndex][1]
+                                if tokens[tokenIndex][1] == '(':
+                                    tokenIndex += 1
+                                    defaultValue += tokens[tokenIndex][1] # ')'
+                                    tokenIndex += 1
+                            argument.append(defaultValue)
+                        arguments.append(argument)
+                        if tokens[tokenIndex][1] != ',':
+                            break
+
                 className = ""
                 for parentBlock in reversed(blocks):
                     if parentBlock[0] < block[0] and parentBlock[1] > block[1]:
@@ -245,6 +276,7 @@ def parse_php_tokens(tokens):
                 block.append(methodName)    # 5
                 block.append(keywords)      # 6
                 block.append(docComment)    # 7
+                block.append(arguments)     # 8
     return (blocks, namespace, use_statements, use_statement_index, constants)
 
 

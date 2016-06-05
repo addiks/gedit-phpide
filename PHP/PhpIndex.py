@@ -311,6 +311,7 @@ class PhpIndex:
                     methodName = block[5]
                     keywords   = block[6]
                     doccomment = block[7]
+                    arguments  = block[8]
                     line   = tokens[tokenIndex][2]
                     column = tokens[tokenIndex][3]
 
@@ -321,7 +322,7 @@ class PhpIndex:
                     else:
                         visibility = 'public'
 
-                    self._storage.add_method(filePath, namespace, className, methodName, isStatic, visibility, doccomment, line, column)
+                    self._storage.add_method(filePath, namespace, className, methodName, isStatic, visibility, doccomment, line, column, arguments)
 
                 if block[2] == 'function' and block[4] != None:
                     tokenIndex   = block[3]

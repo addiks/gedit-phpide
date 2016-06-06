@@ -14,6 +14,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import os
 import csv
 
 class IndexPathManager:
@@ -25,11 +26,12 @@ class IndexPathManager:
 
     def getPaths(self):
         result = []
-        with open(self.__filepath, 'r') as handle:
-            csvreader = csv.reader(handle, delimiter=',')
-            for entryPath, entryType in csvreader:
-                isExclude = entryType == "exclude"
-                result.append([entryPath, isExclude])
+        if os.path.isfile(self.__filepath):
+            with open(self.__filepath, 'r') as handle:
+                csvreader = csv.reader(handle, delimiter=',')
+                for entryPath, entryType in csvreader:
+                    isExclude = entryType == "exclude"
+                    result.append([entryPath, isExclude])
         return result
 
     def addPath(self, path, isExclude=False):

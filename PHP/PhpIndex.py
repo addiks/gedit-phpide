@@ -220,7 +220,10 @@ class PhpIndex:
                             self._index_phpfile(entryPath)
 
     def __is_file_indexable(self, filePath):
-        if filePath[-4:] == ".php" and self._index_path_manager.shouldIncludePathInIndex(filePath):
+        shouldInclude = True
+        if self._index_path_manager != None:
+            shouldInclude = self._index_path_manager.shouldIncludePathInIndex(filePath)
+        if filePath[-4:] == ".php" and shouldInclude:
             return True
         else:
             return False

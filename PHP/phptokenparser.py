@@ -22,6 +22,7 @@ import operator
 T_STRING      = token_num('T_STRING')
 T_VARIABLE    = token_num('T_VARIABLE')
 T_DOC_COMMENT = token_num('T_DOC_COMMENT')
+T_COMMENT     = token_num('T_COMMENT')
 
 def parse_php_tokens(tokens):
 
@@ -152,7 +153,7 @@ def parse_php_tokens(tokens):
                 isFinal    = 'final'    in keywords
 
                 docComment = ""
-                if tokens[tokenIndex][0] == T_DOC_COMMENT:
+                if tokens[tokenIndex][0] in [T_DOC_COMMENT, T_COMMENT]:
                     docComment = tokens[tokenIndex][1]
 
                 tokenIndex  = block[3]
@@ -207,11 +208,43 @@ def parse_php_tokens(tokens):
                 block[3] = tokenIndex
 
                 docComment = ""
-                if tokens[tokenIndex-1][0] == T_DOC_COMMENT:
+                if tokens[tokenIndex-1][0] in [T_DOC_COMMENT, T_COMMENT]:
                     docComment = tokens[tokenIndex-1][1]
+
+                arguments = []
+                tokenIndex += 1
+                if tokens[tokenIndex][1] == '(':
+                    while True:
+                        argument = []
+                        tokenIndex += 1
+                        if tokens[tokenIndex][1] == ')':
+                            break
+                        if tokens[tokenIndex][0] in [T_STRING]:
+                            argument.append(tokens[tokenIndex][1])
+                            tokenIndex += 1
+                        else:
+                            argument.append(None)
+                        if tokens[tokenIndex][0] == T_VARIABLE:
+                            argument.append(tokens[tokenIndex][1])
+                            tokenIndex += 1
+                        if tokens[tokenIndex][1] == '=':
+                            defaultValue = ""
+                            while tokens[tokenIndex][1] not in [',', ')']:
+                                tokenIndex += 1
+                                if tokens[tokenIndex][1] != ')':
+                                    defaultValue += tokens[tokenIndex][1]
+                                if tokens[tokenIndex][1] == '(':
+                                    tokenIndex += 1
+                                    defaultValue += tokens[tokenIndex][1] # ')'
+                                    tokenIndex += 1
+                            argument.append(defaultValue)
+                        arguments.append(argument)
+                        if tokens[tokenIndex][1] != ',':
+                            break
 
                 block.append(functionName)  # 4
                 block.append(docComment)    # 5
+                block.append(arguments)     # 6
 
     # enrich methods (needs enriched classes, thats why it's in own iteration)
 
@@ -228,7 +261,7 @@ def parse_php_tokens(tokens):
                     tokenIndex -= 1
 
                 docComment = ""
-                if tokens[tokenIndex][0] == T_DOC_COMMENT:
+                if tokens[tokenIndex][0] in [T_DOC_COMMENT, T_COMMENT]:
                     docComment = tokens[tokenIndex][1]
 
                 tokenIndex = block[3]

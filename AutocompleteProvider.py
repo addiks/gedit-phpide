@@ -63,7 +63,8 @@ class AutocompleteProvider(GObject.Object, GtkSource.CompletionProvider):
 
                 arguments = []
                 if proposal.get_type() == 'function':
-                    arguments = storageget_function_arguments(namespace, proposal.get_word())
+                    namespace = proposal.get_additional_info()
+                    arguments = storage.get_function_arguments(namespace, proposal.get_word())
 
                 elif proposal.get_type() == 'method':
                     if proposal.get_additional_info() != None:
@@ -138,7 +139,8 @@ class AutocompleteProvider(GObject.Object, GtkSource.CompletionProvider):
 
         labelText = None
         if proposal.get_type() == 'function':
-            labelText = storage.get_function_doccomment(proposal.get_word())
+            namespace = proposal.get_additional_info()
+            labelText = storage.get_function_doccomment(namespace, proposal.get_word())
 
         elif proposal.get_type() == 'const':
             labelText = storage.get_constant_doccomment(proposal.get_word())
@@ -275,9 +277,9 @@ class AutocompleteProvider(GObject.Object, GtkSource.CompletionProvider):
             if name.startswith(word) or word=="":
                 proposals.append(AutocompleteProposal(name, name[len(word):], "member", className))
 
-        for name in functions:
+        for namespace, name in functions:
             if name.startswith(word) or word=="":
-                proposals.append(AutocompleteProposal(name, name[len(word):], "function"))
+                proposals.append(AutocompleteProposal(name, name[len(word):], "function", namespace))
 
         for name in set(consts):
             if name.startswith(word) or word=="":

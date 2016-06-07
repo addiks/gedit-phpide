@@ -29,6 +29,7 @@ import csv
 import hashlib
 
 T_DOC_COMMENT = token_num("T_DOC_COMMENT")
+T_COMMENT     = token_num("T_COMMENT")
 
 class PhpIndex:
 
@@ -55,16 +56,21 @@ class PhpIndex:
             self._all_files_count = 0
             self._done_files_count = 0
 
+            self._storage.begin()
+
             self._index_internals()
             self._collect_directory(work_dir)
             self._index_directory(work_dir)
+
+            self._storage.sync()
 
             if self._finished_callback != None:
                 self._finished_callback()
 
         except sqlite3.OperationalError as exception:
             print(dir(exception))
-            self._error_callback("Database error: "+exception.strerror)
+            self._error_callback("Database error: "+str(exception))
+            raise exception
 
     def update(self, work_dir):
 
@@ -77,9 +83,13 @@ class PhpIndex:
             self._all_files_count = 0
             self._done_files_count = 0
 
+            self._storage.begin()
+
             self._remove_deleted(work_dir)
             self._collect_directory(work_dir, True)
             self._update_directory(work_dir)
+
+            self._storage.sync()
 
             if self._finished_callback != None:
                 self._finished_callback()
@@ -133,7 +143,7 @@ class PhpIndex:
             namespace = "\\"
 
             if typeName == 'function':
-                storage.add_function("INTERNAL", namespace, name, docComment, 0, 0)
+                storage.add_function("INTERNAL", namespace, name, docComment, 0, 0, [])
 
             elif typeName in ['class', 'interface', 'trait']:
                 className = name
@@ -149,7 +159,7 @@ class PhpIndex:
                 pass
 
             elif typeName == 'method':
-                #storage.add_method("INTERNAL", namespace, className, methodName, isStatic, visibility, docComment, 0, 0)
+                #storage.add_method("INTERNAL", namespace, className, methodName, isStatic, visibility, docComment, 0, 0, [])
                 pass
 
             elif typeName == 'variable':
@@ -229,14 +239,17 @@ class PhpIndex:
             return False
 
     def reindex_phpfile(self, filePath):
+        self._storage.begin()
         self._unindex_phpfile(filePath)
         self._index_phpfile(filePath)
+        self._storage.sync()
 
     def _index_phpfile(self, filePath):
 
         with open(filePath, "r", encoding = "ISO-8859-1") as f:
             code = f.read()
-        tokens, comments = token_get_all(code)
+
+        tokens, comments = token_get_all(code, filePath)
 
         blocks, namespace, use_statements, use_statement_index, constants = parse_php_tokens(tokens)
 
@@ -303,7 +316,7 @@ class PhpIndex:
                             memberKeywordIndex-=1
     
                         memberDocComment = ""
-                        if tokens[memberKeywordIndex][0] == T_DOC_COMMENT:
+                        if tokens[memberKeywordIndex][0] in [T_DOC_COMMENT, T_COMMENT]:
                             memberDocComment = tokens[memberKeywordIndex][1]
 
                         self._storage.add_member(filePath, namespace, className, memberName, memberLine, memberColumn, isStatic, visibility, memberDocComment)
@@ -331,18 +344,17 @@ class PhpIndex:
                     tokenIndex   = block[3]
                     functionName = block[4]
                     doccomment   = block[5]
+                    arguments    = block[6]
                     line   = tokens[tokenIndex][2]
                     column = tokens[tokenIndex][3]
 
-                    self._storage.add_function(filePath, namespace, functionName, doccomment, line, column)
+                    self._storage.add_function(filePath, namespace, functionName, doccomment, line, column, arguments)
 
         for constantIndex in constants:
             constantName   = tokens[constantIndex+2][1]
             constantLine   = tokens[constantIndex][2]
             constantColumn = tokens[constantIndex][3]
             self._storage.add_constant(filePath, constantName, constantLine, constantColumn)
-
-        self._storage.sync()
 
     def _unindex_phpfile(self, filePath):
         self._storage.removeFile(filePath)

@@ -24,7 +24,9 @@ class Sqlite3Storage:
         self._connection.text_factory = str
         self._cursor = self._connection.cursor()
         self._insert_counter = 0
+        self._is_transaction_active = False
 
+        self._cursor.execute("PRAGMA main.synchronous = OFF")
         self._cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
         if self._cursor.rowcount < 5:
             self.__create_tables()
@@ -108,7 +110,8 @@ class Sqlite3Storage:
                 "name        VARCHAR(128), "
                 "doccomment  SMALLTEXT, "
                 "line        INTEGER, "
-                "column      SMALLINT"
+                "column      SMALLINT, "
+                "arguments   SMALLTEXT "
             ")"
         );
         cursor.execute(
@@ -120,7 +123,7 @@ class Sqlite3Storage:
                 "column      SMALLINT"
             ")"
         );
-        self._connection.commit()
+        #self._connection.commit()
 
     ### FILES
 
@@ -541,14 +544,14 @@ class Sqlite3Storage:
 
     ### FUNCTIONS ###
 
-    def add_function(self, filePath, namespace, functionName, docComment, line, column):
+    def add_function(self, filePath, namespace, functionName, docComment, line, column, arguments):
         cursor = self._cursor
         while len(namespace)>0 and namespace[0] == '\\':
             namespace = namespace[1:]
         cursor.execute(
-            "INSERT INTO functions (file_path, namespace, name, doccomment, line, column) "
-            "VALUES (?, ?, ?, ?, ?, ?)",
-            (filePath, namespace, functionName, docComment, line, column, )
+            "INSERT INTO functions (file_path, namespace, name, doccomment, line, column, arguments) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (filePath, namespace, functionName, docComment, line, column, repr(arguments))
         )
         self.__commitAfterXInserts()
 
@@ -571,12 +574,12 @@ class Sqlite3Storage:
     def get_all_functions(self):
         cursor = self._cursor
         result = cursor.execute(
-            "SELECT name "
+            "SELECT namespace, name "
             "FROM functions "
         )
         functions = []
-        for name, in result:
-            functions.append(name)
+        for namespace, name in result:
+            functions.append([namespace, name])
         return functions
 
     def get_function_position(self, namespace, functionName):
@@ -615,7 +618,7 @@ class Sqlite3Storage:
             "SELECT id, arguments "
             "FROM functions "
             "WHERE namespace = ? AND name = ?",
-            (classId, functionName)
+            (namespace, functionName)
         )
         resultArguments = None
         for class_id, arguments in result:
@@ -738,7 +741,10 @@ class Sqlite3Storage:
         self._insert_counter+=1
         if self._insert_counter >= 3000:
             self._insert_counter = 0
-            self._connection.commit()
+#            self._connection.commit()
+
+    def begin(self):
+        pass
 
     def sync(self):
         self._connection.commit()

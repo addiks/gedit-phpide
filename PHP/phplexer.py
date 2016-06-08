@@ -239,7 +239,7 @@ T_HEREDOC                  = token_num('T_HEREDOC')
 T_DOC_COMMENT              = token_num('T_DOC_COMMENT')
 
 # new experimental _fast_ PHP lexer
-def token_get_all(code, filePath):
+def token_get_all(code, filePath=None):
     tokens = []
     comments = []
 

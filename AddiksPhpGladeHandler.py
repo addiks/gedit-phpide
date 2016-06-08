@@ -174,3 +174,17 @@ class AddiksPhpGladeHandler:
                 indexPathManager.modifyPath(entryPath, newEntryPath, isExclude)
                 self.onIndexPathsManagerShow()
 
+    ### CALLER WINDOW
+
+    def onCallerRowActivated(self, treeView, treePath, treeViewColumn, userData=None):
+        window    = self._builder.get_object("windowCallers")
+        listStore = self._builder.get_object('liststoreCallers')
+
+        rowIter = listStore.get_iter(treePath)
+
+        filePath = listStore.get_value(rowIter, 0)
+        line     = listStore.get_value(rowIter, 1)
+
+        self._plugin.open_by_position(filePath, line, 1)
+
+

@@ -17,6 +17,7 @@
 from PHP.phplexer import token_get_all
 from PHP.phplexer import token_name
 from PHP.phplexer import token_num
+import PHP.phplexer
 import operator
 
 T_STRING      = token_num('T_STRING')
@@ -36,6 +37,7 @@ def parse_php_tokens(tokens):
     namespace = '\\'
     use_statements = {}
     use_statement_index = None
+    uses = []
 
     # find blocks, classes and functions(/methods)
     tokenIndex = 0
@@ -85,6 +87,33 @@ def parse_php_tokens(tokens):
                 raise Exception("Invalid '}' (in '"+str(token[2])+'|'+str(token[3])+"'#"+str(tokenIndex)+")")
             beginIndex = blockStack.pop()
             blocks.append([beginIndex, tokenIndex])
+
+        if token[0] == T_STRING and token[1] not in PHP.phplexer.keywords and token[1] != "namespace" and tokens[tokenIndex-1][1] != "namespace":
+            isOnClass = (tokens[tokenIndex-1][1] in ['->', '::'])
+            isRoutine = (tokens[tokenIndex+1][1] == '(')
+            isType = (tokens[tokenIndex+1][0] == T_VARIABLE) or tokens[tokenIndex-1][1] in ['use', 'extends', 'implements', 'new']
+
+            typeRef = "unknown"
+            if isOnClass:
+                if isRoutine:
+                    typeRef = "method"
+                else:
+                    typeRef = "member"
+            else:
+                if isRoutine:
+                    typeRef = "function"
+                elif isType:
+                    typeRef = "class"
+                else:
+                    typeRef = "constant"
+
+            tokenText = token[1]
+            if typeRef == "class" and '\\' in tokenText:
+                tokenText = tokenText.split('\\')
+                tokenText = tokenText[-1]
+
+            if tokens[-2][1] not in ['$this', 'self'] and tokenText not in ['true', 'false', 'null']:
+                uses.append([tokenIndex, token[2], token[3], tokenText, typeRef])
         tokenIndex += 1
 
     blocks.sort(key=operator.itemgetter(0))
@@ -94,8 +123,8 @@ def parse_php_tokens(tokens):
         classBlockIndex = 0
         for block in blocks:
             if block[0] > classIndex and len(block)<=2:
-                block.append('class')
-                block.append(classIndex)
+                block.append('class')    #2
+                block.append(classIndex) #3
                 break
             classBlockIndex += 1
 
@@ -111,10 +140,10 @@ def parse_php_tokens(tokens):
                             isMethod = True
                         break
                 if isMethod:
-                    block.append('method') #2
+                    block.append('method')   #2
                 else:
                     block.append('function') #2
-                block.append(functionIndex) #3
+                block.append(functionIndex)  #3
                 break
             functionBlockIndex += 1
 
@@ -310,6 +339,21 @@ def parse_php_tokens(tokens):
                 block.append(keywords)      # 6
                 block.append(docComment)    # 7
                 block.append(arguments)     # 8
+
+    # assign uses to blocks
+
+    blockIndex = 0
+    for block in blocks:
+        blockUses = []
+        for tokenIndex, line, column, tokenText, typeRef in uses:
+            blockBegin = block[0]
+            if len(block) > 2 and block[2] in ['method', 'function']:
+                blockBegin = block[3]
+            if tokenIndex > blockBegin and tokenIndex < block[1]:
+                blockUses.append([line, column, tokenText, typeRef])
+        blocks[blockIndex].append(blockUses)
+        blockIndex += 1
+
     return (blocks, namespace, use_statements, use_statement_index, constants)
 
 

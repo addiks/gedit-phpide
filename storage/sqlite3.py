@@ -123,6 +123,61 @@ class Sqlite3Storage:
                 "column      SMALLINT"
             ")"
         );
+        cursor.execute(
+            "CREATE TABLE IF NOT EXISTS classes_method_uses("
+                "id           INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
+                "file_path    VARCHAR(256) NOT NULL, "
+                "name         VARCHAR(128), "
+                "line         INTEGER, "
+                "column       SMALLINT, "
+                "className    VARCHAR(128), "
+                "functionName VARCHAR(128)"
+            ")"
+        );
+        cursor.execute(
+            "CREATE TABLE IF NOT EXISTS classes_member_uses("
+                "id           INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
+                "file_path    VARCHAR(256) NOT NULL, "
+                "name         VARCHAR(128), "
+                "line         INTEGER, "
+                "column       SMALLINT, "
+                "className    VARCHAR(128), "
+                "functionName VARCHAR(128)"
+            ")"
+        );
+        cursor.execute(
+            "CREATE TABLE IF NOT EXISTS function_uses("
+                "id           INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
+                "file_path    VARCHAR(256) NOT NULL, "
+                "name         VARCHAR(128), "
+                "line         INTEGER, "
+                "column       SMALLINT, "
+                "className    VARCHAR(128), "
+                "functionName VARCHAR(128)"
+            ")"
+        );
+        cursor.execute(
+            "CREATE TABLE IF NOT EXISTS classes_uses("
+                "id          INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
+                "file_path   VARCHAR(256) NOT NULL, "
+                "name        VARCHAR(128), "
+                "line        INTEGER, "
+                "column       SMALLINT, "
+                "className    VARCHAR(128), "
+                "functionName VARCHAR(128)"
+            ")"
+        );
+        cursor.execute(
+            "CREATE TABLE IF NOT EXISTS constant_uses("
+                "id           INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
+                "file_path    VARCHAR(256) NOT NULL, "
+                "name         VARCHAR(128), "
+                "line         INTEGER, "
+                "column       SMALLINT, "
+                "className    VARCHAR(128), "
+                "functionName VARCHAR(128)"
+            ")"
+        );
         #self._connection.commit()
 
     ### FILES
@@ -288,6 +343,31 @@ class Sqlite3Storage:
             resultDocComment = docComment
             break
         return resultDocComment
+
+    def add_class_use(self, name, filePath, line, column, className, functionName):
+        cursor = self._cursor
+        if name[0] != '\\':
+            name = '\\' + name
+        cursor.execute(
+            "INSERT INTO classes_uses (name, file_path, line, column, className, functionName) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (name, filePath, line, column, className, functionName)
+        )
+
+    def get_class_uses(self, name):
+        cursor = self._cursor
+        if name[0] != '\\':
+            name = '\\' + name
+        result = cursor.execute(
+            "SELECT file_path, line, column, className, functionName "
+            "FROM classes_uses "
+            "WHERE name = ?",
+            (name, )
+        )
+        uses = []
+        for file_path, line, column, className, functionName in result:
+            uses.append([file_path, line, column, className, functionName])
+        return uses
 
     ### CLASS-CONSTANT ###
 
@@ -457,6 +537,27 @@ class Sqlite3Storage:
             break
         return resultArguments
 
+    def add_method_use(self, name, filePath, line, column, className, functionName):
+        cursor = self._cursor
+        cursor.execute(
+            "INSERT INTO classes_method_uses (name, file_path, line, column, className, functionName) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (name, filePath, line, column, className, functionName)
+        )
+
+    def get_method_uses(self, name):
+        cursor = self._cursor
+        result = cursor.execute(
+            "SELECT file_path, line, column, className, functionName "
+            "FROM classes_method_uses "
+            "WHERE name = ?",
+            (name, )
+        )
+        uses = []
+        for file_path, line, column, className, functionName in result:
+            uses.append([file_path, line, column, className, functionName])
+        return uses
+
     ### MEMBERS ###
 
     def add_member(self, filePath, namespace, className, memberName, line, column, isStatic, visibility, docComment):
@@ -542,6 +643,27 @@ class Sqlite3Storage:
             break
         return resultDocComment
 
+    def add_member_use(self, name, filePath, line, column, className, functionName):
+        cursor = self._cursor
+        cursor.execute(
+            "INSERT INTO classes_member_uses (name, file_path, line, column, className, functionName) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (name, filePath, line, column, className, functionName)
+        )
+
+    def get_member_uses(self, name):
+        cursor = self._cursor
+        result = cursor.execute(
+            "SELECT file_path, line, column, className, functionName "
+            "FROM classes_member_uses "
+            "WHERE name = ?",
+            (name, )
+        )
+        uses = []
+        for file_path, line, column, className, functionName in result:
+            uses.append([file_path, line, column, className, functionName])
+        return uses
+
     ### FUNCTIONS ###
 
     def add_function(self, filePath, namespace, functionName, docComment, line, column, arguments):
@@ -626,6 +748,27 @@ class Sqlite3Storage:
             break
         return resultArguments
 
+    def add_function_use(self, name, filePath, line, column, className, functionName):
+        cursor = self._cursor
+        cursor.execute(
+            "INSERT INTO function_uses (name, file_path, line, column, className, functionName) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (name, filePath, line, column, className, functionName)
+        )
+
+    def get_function_uses(self, name):
+        cursor = self._cursor
+        result = cursor.execute(
+            "SELECT file_path, line, column, className, functionName "
+            "FROM function_uses "
+            "WHERE name = ?",
+            (name, )
+        )
+        uses = []
+        for file_path, line, column, className, functionName in result:
+            uses.append([file_path, line, column, className, functionName])
+        return uses
+
     ### CONSTANTS ###
 
     def add_constant(self, filePath, constantName, line, column):
@@ -664,6 +807,27 @@ class Sqlite3Storage:
 
     def get_constant_doccomment(self, constantName):
         return ''; # no doccomment in db yet
+
+    def add_constant_use(self, name, filePath, line, column, className, functionName):
+        cursor = self._cursor
+        cursor.execute(
+            "INSERT INTO constant_uses (name, file_path, line, column, className, functionName) "
+            "VALUES (?, ?, ?, ?, ?, ?)",
+            (name, filePath, line, column, className, functionName)
+        )
+
+    def get_constant_uses(self, name):
+        cursor = self._cursor
+        result = cursor.execute(
+            "SELECT file_path, line, column, className, functionName "
+            "FROM constant_uses "
+            "WHERE name = ?",
+            (name, )
+        )
+        uses = []
+        for file_path, line, column, className, functionName in result:
+            uses.append([file_path, line, column, className, functionName])
+        return uses
 
     ### FULLTEXT SEARCH ###
 

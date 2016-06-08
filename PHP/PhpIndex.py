@@ -271,6 +271,7 @@ class PhpIndex:
                     members        = block[10]
                     classconstants = block[11]
                     docComment     = block[12]
+                    uses           = block[13]
                     line   = tokens[tokenIndex][2]
                     column = tokens[tokenIndex][3]
 
@@ -314,12 +315,14 @@ class PhpIndex:
                             if tokens[memberKeywordIndex][1] in ['public', 'protected', 'private']:
                                 visibility = tokens[memberKeywordIndex][1]
                             memberKeywordIndex-=1
-    
+
                         memberDocComment = ""
                         if tokens[memberKeywordIndex][0] in [T_DOC_COMMENT, T_COMMENT]:
                             memberDocComment = tokens[memberKeywordIndex][1]
 
                         self._storage.add_member(filePath, namespace, className, memberName, memberLine, memberColumn, isStatic, visibility, memberDocComment)
+
+                    self.__index_uses(filePath, className, "", uses, use_statements)
 
                 if block[2] == 'method':
                     tokenIndex = block[3]
@@ -328,6 +331,7 @@ class PhpIndex:
                     keywords   = block[6]
                     doccomment = block[7]
                     arguments  = block[8]
+                    uses       = block[9]
                     line   = tokens[tokenIndex][2]
                     column = tokens[tokenIndex][3]
 
@@ -340,15 +344,20 @@ class PhpIndex:
 
                     self._storage.add_method(filePath, namespace, className, methodName, isStatic, visibility, doccomment, line, column, arguments)
 
+                    self.__index_uses(filePath, className, methodName, uses, use_statements)
+
                 if block[2] == 'function' and block[4] != None:
                     tokenIndex   = block[3]
                     functionName = block[4]
                     doccomment   = block[5]
                     arguments    = block[6]
+                    uses         = block[7]
                     line   = tokens[tokenIndex][2]
                     column = tokens[tokenIndex][3]
 
                     self._storage.add_function(filePath, namespace, functionName, doccomment, line, column, arguments)
+
+                    self.__index_uses(filePath, "", functionName, uses, use_statements)
 
         for constantIndex in constants:
             constantName   = tokens[constantIndex+2][1]
@@ -359,5 +368,23 @@ class PhpIndex:
     def _unindex_phpfile(self, filePath):
         self._storage.removeFile(filePath)
 
+    def __index_uses(self, filePath, className, containingName, uses, use_statements={}):
+        for line, column, usedName, useType in uses:
+            if useType == 'method':
+                self._storage.add_method_use(usedName, filePath, line, column, className, containingName)
+
+            elif useType == 'member':
+                self._storage.add_member_use(usedName, filePath, line, column, className, containingName)
+
+            elif useType == 'function':
+                self._storage.add_function_use(usedName, filePath, line, column, className, containingName)
+
+            elif useType == 'class':
+                if usedName in use_statements:
+                    usedName = use_statements[usedName]
+                self._storage.add_class_use(usedName, filePath, line, column, className, containingName)
+
+            elif useType == 'constant':
+                self._storage.add_constant_use(usedName, filePath, line, column, className, containingName)
 
 

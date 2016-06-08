@@ -398,7 +398,69 @@ class AddiksPhpIndexWindow(GObject.Object, Gedit.WindowActivatable):
     def on_open_call_view(self, action, data=None):
         if not self.is_index_built():
             return self.on_index_not_build()
-        print("Open call")
+
+        line, column = self.get_current_cursor_position()
+        if line != None and column != None:
+            use_statements = self.get_php_fileindex().get_use_statements()
+            declarationType, name, containingClassName = self.get_php_fileindex().get_declaration_by_position(line, column)
+            namespace = self.get_php_fileindex().get_namespace()
+
+            storage = self.get_index_storage()
+
+            uses = None
+            if declarationType == 'method':
+                print(name)
+                uses = storage.get_method_uses(name)
+
+            elif declarationType == 'function':
+                print(name)
+                uses = storage.get_function_uses(name)
+
+            elif declarationType == 'member':
+                print(name)
+                uses = storage.get_member_uses(name)
+
+            elif declarationType == 'class':
+                if name in use_statements:
+                    name = use_statements[name]
+                elif name[0] != '\\':
+                    name = namespace + '\\' + name
+                print(name)
+                uses = storage.get_class_uses(name)
+
+            elif declarationType == 'constant':
+                print(name)
+                uses = storage.get_constant_uses(name)
+
+            else:
+                return
+
+            builder = self.getGladeBuilder()
+            listStore = builder.get_object('liststoreCallers')
+
+            filteredUses = {}
+            for filePath, line, column, className, functionName in uses:
+                filteredUses[filePath + ":" + str(line)] = [filePath, line, column, className, functionName]
+            filteredUses = list(filteredUses.values())
+
+            listStore.clear()
+            for filePath, line, column, className, functionName in filteredUses:
+                preview = ""
+                if os.path.exists(filePath):
+                    with open(filePath, "r", encoding = "ISO-8859-1") as f:
+                        code = f.read()
+                    lines = code.split("\n")
+                    preview = lines[line-1]
+                rowIter = listStore.append()
+                listStore.set_value(rowIter, 0, filePath)
+                listStore.set_value(rowIter, 1, line)
+                listStore.set_value(rowIter, 2, className)
+                listStore.set_value(rowIter, 3, functionName)
+                listStore.set_value(rowIter, 4, preview)
+
+            window = builder.get_object('windowCallers')
+            window.connect('delete-event', lambda w, e: w.hide() or True)
+            window.show_all()
 
     def on_open_depency_view(self, action, data=None):
         if not self.is_index_built():

@@ -6,8 +6,8 @@
             <menuitem name="OpenTypeView"     action="OpenTypeViewAction"/>
             <menuitem name="ToggleOutline"    action="ToggleOutlineAction"/>
             <menuitem name="SearchIndex"      action="SearchIndexAction"/>
-        <!--    <menuitem name="OpenCallView"    action="OpenCallViewAction"/>
-            <menuitem name="OpenDepencyView"  action="OpenDepencyViewAction"/> -->
+            <menuitem name="OpenCallView"    action="OpenCallViewAction"/>
+        <!--    <menuitem name="OpenDepencyView"  action="OpenDepencyViewAction"/> -->
 
             <separator/>
             <menuitem name="BuildIndex"       action="BuildIndexAction"/>

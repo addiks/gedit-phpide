@@ -2,6 +2,96 @@
 <!-- Generated with glade 3.16.1 -->
 <interface>
   <requires lib="gtk+" version="3.10"/>
+  <object class="GtkListStore" id="liststoreCallers">
+    <columns>
+      <!-- column-name filepath -->
+      <column type="gchararray"/>
+      <!-- column-name line -->
+      <column type="gint"/>
+      <!-- column-name class -->
+      <column type="gchararray"/>
+      <!-- column-name function -->
+      <column type="gchararray"/>
+      <!-- column-name linePreview -->
+      <column type="gchararray"/>
+    </columns>
+  </object>
+  <object class="GtkWindow" id="windowCallers">
+    <property name="can_focus">False</property>
+    <property name="title" translatable="yes">Gedit - PHP - Calltrace</property>
+    <property name="default_width">840</property>
+    <property name="default_height">250</property>
+    <child>
+      <object class="GtkScrolledWindow" id="scrolledwindowCallers">
+        <property name="visible">True</property>
+        <property name="can_focus">True</property>
+        <property name="shadow_type">in</property>
+        <child>
+          <object class="GtkTreeView" id="treeviewCallers">
+            <property name="visible">True</property>
+            <property name="can_focus">True</property>
+            <property name="model">liststoreCallers</property>
+            <property name="search_column">0</property>
+            <signal name="row-activated" handler="onCallerRowActivated" swapped="no"/>
+            <child internal-child="selection">
+              <object class="GtkTreeSelection" id="treeview-selection"/>
+            </child>
+            <child>
+              <object class="GtkTreeViewColumn" id="treeviewcolumnCallerClass">
+                <property name="sizing">autosize</property>
+                <property name="title" translatable="yes">class</property>
+                <property name="reorderable">True</property>
+                <child>
+                  <object class="GtkCellRendererText" id="cellrenderertextCallerClass"/>
+                  <attributes>
+                    <attribute name="text">2</attribute>
+                  </attributes>
+                </child>
+              </object>
+            </child>
+            <child>
+              <object class="GtkTreeViewColumn" id="treeviewcolumnCallerFunction">
+                <property name="sizing">autosize</property>
+                <property name="title" translatable="yes">function</property>
+                <property name="reorderable">True</property>
+                <child>
+                  <object class="GtkCellRendererText" id="cellrenderertextCallerFunction"/>
+                  <attributes>
+                    <attribute name="text">3</attribute>
+                  </attributes>
+                </child>
+              </object>
+            </child>
+            <child>
+              <object class="GtkTreeViewColumn" id="treeviewcolumnCallerLine">
+                <property name="sizing">autosize</property>
+                <property name="title" translatable="yes">line</property>
+                <property name="reorderable">True</property>
+                <child>
+                  <object class="GtkCellRendererText" id="cellrenderertextCallerLine"/>
+                  <attributes>
+                    <attribute name="text">1</attribute>
+                  </attributes>
+                </child>
+              </object>
+            </child>
+            <child>
+              <object class="GtkTreeViewColumn" id="treeviewcolumn1">
+                <property name="sizing">autosize</property>
+                <property name="title" translatable="yes">preview</property>
+                <child>
+                  <object class="GtkCellRendererText" id="cellrenderertextCallerPreview"/>
+                  <attributes>
+                    <attribute name="text">4</attribute>
+                  </attributes>
+                </child>
+              </object>
+            </child>
+          </object>
+        </child>
+      </object>
+    </child>
+  </object>
   <object class="GtkListStore" id="liststoreIndexPathsManager">
     <columns>
       <!-- column-name path -->

@@ -361,7 +361,8 @@ class Sqlite3Storage:
         result = cursor.execute(
             "SELECT file_path, line, column, className, functionName "
             "FROM classes_uses "
-            "WHERE name = ?",
+            "WHERE name = ? "
+            "ORDER BY className, line, functionName DESC",
             (name, )
         )
         uses = []
@@ -550,7 +551,8 @@ class Sqlite3Storage:
         result = cursor.execute(
             "SELECT file_path, line, column, className, functionName "
             "FROM classes_method_uses "
-            "WHERE name = ?",
+            "WHERE name = ? "
+            "ORDER BY className, line, functionName DESC",
             (name, )
         )
         uses = []
@@ -656,7 +658,8 @@ class Sqlite3Storage:
         result = cursor.execute(
             "SELECT file_path, line, column, className, functionName "
             "FROM classes_member_uses "
-            "WHERE name = ?",
+            "WHERE name = ? "
+            "ORDER BY className, line, functionName DESC",
             (name, )
         )
         uses = []
@@ -761,7 +764,8 @@ class Sqlite3Storage:
         result = cursor.execute(
             "SELECT file_path, line, column, className, functionName "
             "FROM function_uses "
-            "WHERE name = ?",
+            "WHERE name = ? "
+            "ORDER BY className, line, functionName DESC",
             (name, )
         )
         uses = []
@@ -821,7 +825,8 @@ class Sqlite3Storage:
         result = cursor.execute(
             "SELECT file_path, line, column, className, functionName "
             "FROM constant_uses "
-            "WHERE name = ?",
+            "WHERE name = ? "
+            "ORDER BY className, line, functionName DESC",
             (name, )
         )
         uses = []

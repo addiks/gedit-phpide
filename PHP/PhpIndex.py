@@ -322,7 +322,7 @@ class PhpIndex:
 
                         self._storage.add_member(filePath, namespace, className, memberName, memberLine, memberColumn, isStatic, visibility, memberDocComment)
 
-                    self.__index_uses(filePath, className, "", uses, use_statements)
+                    self.__index_uses(filePath, className, "", uses, namespace, use_statements)
 
                 if block[2] == 'method':
                     tokenIndex = block[3]
@@ -344,7 +344,7 @@ class PhpIndex:
 
                     self._storage.add_method(filePath, namespace, className, methodName, isStatic, visibility, doccomment, line, column, arguments)
 
-                    self.__index_uses(filePath, className, methodName, uses, use_statements)
+                    self.__index_uses(filePath, className, methodName, uses, namespace, use_statements)
 
                 if block[2] == 'function' and block[4] != None:
                     tokenIndex   = block[3]
@@ -357,7 +357,7 @@ class PhpIndex:
 
                     self._storage.add_function(filePath, namespace, functionName, doccomment, line, column, arguments)
 
-                    self.__index_uses(filePath, "", functionName, uses, use_statements)
+                    self.__index_uses(filePath, "", functionName, uses, namespace, use_statements)
 
         for constantIndex in constants:
             constantName   = tokens[constantIndex+2][1]
@@ -368,7 +368,11 @@ class PhpIndex:
     def _unindex_phpfile(self, filePath):
         self._storage.removeFile(filePath)
 
-    def __index_uses(self, filePath, className, containingName, uses, use_statements={}):
+    def __index_uses(self, filePath, className, containingName, uses, namespace, use_statements={}):
+        if className in use_statements:
+            className = use_statements[className]
+        if len(className)>0 and className[0] != '\\':
+            className = namespace + '\\' + className
         for line, column, usedName, useType in uses:
             if useType == 'method':
                 self._storage.add_method_use(usedName, filePath, line, column, className, containingName)
@@ -382,6 +386,8 @@ class PhpIndex:
             elif useType == 'class':
                 if usedName in use_statements:
                     usedName = use_statements[usedName]
+                if len(usedName)>0 and usedName[0] != '\\':
+                    usedName = namespace + '\\' + usedName
                 self._storage.add_class_use(usedName, filePath, line, column, className, containingName)
 
             elif useType == 'constant':

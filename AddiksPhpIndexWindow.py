@@ -442,6 +442,7 @@ class AddiksPhpIndexWindow(GObject.Object, Gedit.WindowActivatable):
             for filePath, line, column, className, functionName in uses:
                 filteredUses[filePath + ":" + str(line)] = [filePath, line, column, className, functionName]
             filteredUses = list(filteredUses.values())
+            filteredUses.sort(key=self.__filteredUsesKey)
 
             listStore.clear()
             for filePath, line, column, className, functionName in filteredUses:
@@ -461,6 +462,9 @@ class AddiksPhpIndexWindow(GObject.Object, Gedit.WindowActivatable):
             window = builder.get_object('windowCallers')
             window.connect('delete-event', lambda w, e: w.hide() or True)
             window.show_all()
+
+    def __filteredUsesKey(self, use):
+        return use[3] + str(use[1]) + use[4]
 
     def on_open_depency_view(self, action, data=None):
         if not self.is_index_built():

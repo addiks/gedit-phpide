@@ -49,11 +49,11 @@ def parse_php_tokens(tokens):
                 if use_statement_index == None:
                     use_statement_index = tokenIndex+2;
 
-        if token[1] == 'use':
+        if token[1] == 'use' and len(blockStack) <= 0:
             if tokens[tokenIndex+1][0] == T_STRING:
                 use_statement = tokens[tokenIndex+1][1]
                 if use_statement[-1] != '\\':
-                    use_statement = "\\" + use_statement
+                    use_statement = '\\' + use_statement
                 use_parts = use_statement.split("\\")
                 if tokens[tokenIndex+2][1] == 'as' and tokens[tokenIndex+3][0] == T_STRING:
                     use_alias = tokens[tokenIndex+3][1]
@@ -77,7 +77,7 @@ def parse_php_tokens(tokens):
         if token[1] == 'define':
             constants.append(tokenIndex)
 
-        if token[1] == ";": # for abstract methods
+        if token[1] == ";" and len(functions + classes) > 0: # for abstract methods
             blocks.append([tokenIndex, tokenIndex])
 
         if token[1] == "{":
@@ -91,7 +91,7 @@ def parse_php_tokens(tokens):
         if token[0] == T_STRING and token[1] not in PHP.phplexer.keywords and token[1] != "namespace" and tokens[tokenIndex-1][1] != "namespace":
             isOnClass = (tokens[tokenIndex-1][1] in ['->', '::'])
             isRoutine = (tokens[tokenIndex+1][1] == '(')
-            isType = (tokens[tokenIndex+1][0] == T_VARIABLE) or tokens[tokenIndex-1][1] in ['use', 'extends', 'implements', 'new']
+            isType = (tokens[tokenIndex+1][0] == T_VARIABLE) or tokens[tokenIndex-1][1] in ['use', 'extends', 'implements', 'new', 'instanceof']
 
             typeRef = "unknown"
             if isOnClass:

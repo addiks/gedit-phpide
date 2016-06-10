@@ -409,15 +409,12 @@ class AddiksPhpIndexWindow(GObject.Object, Gedit.WindowActivatable):
 
             uses = None
             if declarationType == 'method':
-                print(name)
                 uses = storage.get_method_uses(name)
 
             elif declarationType == 'function':
-                print(name)
                 uses = storage.get_function_uses(name)
 
             elif declarationType == 'member':
-                print(name)
                 uses = storage.get_member_uses(name)
 
             elif declarationType == 'class':
@@ -425,11 +422,9 @@ class AddiksPhpIndexWindow(GObject.Object, Gedit.WindowActivatable):
                     name = use_statements[name]
                 elif name[0] != '\\':
                     name = namespace + '\\' + name
-                print(name)
                 uses = storage.get_class_uses(name)
 
             elif declarationType == 'constant':
-                print(name)
                 uses = storage.get_constant_uses(name)
 
             else:

@@ -129,20 +129,24 @@ class PhpFile:
 
         if tokens[tokenIndex][0] == T_STRING:
             if tokens[tokenIndex+1][1] == '(' and tokens[tokenIndex-1][1] != 'new':
-                if tokens[tokenIndex-1][1] == '->':
+                if tokens[tokenIndex-1][1] == 'function':
+                    if self.__is_in_class(tokenIndex): # method declaration
+                        className = self.__get_class_is_in(tokenIndex)
+                        declaration = ['method', tokens[tokenIndex][1], className]
+
+                    else: # function declaration
+                        declaration = ['function', tokens[tokenIndex][1], None]
+
+                elif tokens[tokenIndex-1][1] in ['->', '::']: # method call
                     className = self.get_type_by_token_index(tokenIndex-2)
                     declaration = ['method', tokens[tokenIndex][1], className]
 
-                elif tokens[tokenIndex-1][1] == '::':
-                    className = self.get_type_by_token_index(tokenIndex-2)
-                    declaration = ['method', tokens[tokenIndex][1], className]
-
-                else:
+                else: # function call
                     declaration = ['function', tokens[tokenIndex][1], None]
 
             elif tokens[tokenIndex-1][1] == '->':
                 className = self.get_type_by_token_index(tokenIndex-2)
-                declaration = ['member', tokens[tokenIndex][1], className]
+                declaration = ['/home/gerrit/.local/share/gedit/plugins/addiks-phpide/PHP/PhpFile.pymember', tokens[tokenIndex][1], className]
 
             elif tokens[tokenIndex-1][1] == '::':
                 className = self.get_type_by_token_index(tokenIndex-2)
@@ -308,13 +312,15 @@ class PhpFile:
                 if( line >= tokens[scopeBeginIndex][2] and line <= tokens[scopeEndIndex][2] ):
                     annotations = self.__get_annotations_by_doccomment(phpcode)
                     if "var" in annotations:
-                        for variable, varTypeId, in annotations['var']:
-                            if varTypeId[0] == '$':
-                                tempVar   = variable
-                                variable  = varTypeId
-                                varTypeId = tempVar
-                            if variable == needleVariableName:
-                                typeId = varTypeId
+                        for annotation in annotations['var']:
+                            if len(annotation) > 1:
+                                variable, varTypeId = annotation
+                                if varTypeId[0] == '$':
+                                    tempVar   = variable
+                                    variable  = varTypeId
+                                    varTypeId = tempVar
+                                if variable == needleVariableName:
+                                    typeId = varTypeId
 
             # try to resolve by assignment ($foo = new \Bar();)
             if typeId == None:
@@ -418,6 +424,12 @@ class PhpFile:
     def __is_in_method(self, tokenIndex):
         for block in self.__blocks:
             if len(block)>2 and block[2] == 'method' and block[0] < tokenIndex and block[1] > tokenIndex:
+                return True
+        return False
+
+    def __is_in_class(self, tokenIndex):
+        for block in self.__blocks:
+            if len(block)>2 and block[2] == 'class' and block[0] < tokenIndex and block[1] > tokenIndex:
                 return True
         return False
 

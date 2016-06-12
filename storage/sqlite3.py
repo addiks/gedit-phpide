@@ -27,6 +27,9 @@ class Sqlite3Storage:
         self._is_transaction_active = False
 
         self._cursor.execute("PRAGMA main.synchronous = OFF")
+        self._cursor.execute("PRAGMA main.count_changes = OFF")
+        self._cursor.execute("PRAGMA main.journal_mode = MEMORY")
+        self._cursor.execute("PRAGMA main.temp_store = MEMORY")
         self._cursor.execute("SELECT name FROM sqlite_master WHERE type='table'")
         if self._cursor.rowcount < 5:
             self.__create_tables()

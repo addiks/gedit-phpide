@@ -238,7 +238,6 @@ T_CLOSE_TAG                = token_num('T_CLOSE_TAG')
 T_HEREDOC                  = token_num('T_HEREDOC')
 T_DOC_COMMENT              = token_num('T_DOC_COMMENT')
 
-# new experimental _fast_ PHP lexer
 def token_get_all(code, filePath=None):
     tokens = []
     comments = []
@@ -403,20 +402,14 @@ def token_get_all(code, filePath=None):
 def process_token(code, tokens, tokenNum, tokenText, row, col):
     code = code[len(tokenText):]
     tokens.append([tokenNum, tokenText, row, col])
-    row, col = increment_row_and_colum(tokenText, row, col)
-    return [code, tokens, row, col]
 
-
-def increment_row_and_colum(tokenText, row, col):
     rowDelta = tokenText.count("\n")
     row += rowDelta
     if rowDelta > 0:
         col = len(tokenText) - tokenText.rfind("\n")
     else:
         col += len(tokenText)
-    return [row, col]
 
-
-
+    return [code, tokens, row, col]
 
 

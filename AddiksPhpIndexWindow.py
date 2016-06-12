@@ -15,7 +15,7 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from gi.repository import GLib, Gtk, GObject, Gedit, PeasGtk, Gio, GtkSource
-from PHP.PhpFile import PhpFile
+from PHP.PhpFileAnalyzer import PhpFileAnalyzer
 from PHP.get_namespace_by_classname import get_namespace_by_classname
 from PHP.IndexPathManager import IndexPathManager
 from update_gtk import update_gtk, build_gtk
@@ -45,16 +45,16 @@ class AddiksPhpIndexWindow(GObject.Object, Gedit.WindowActivatable):
         plugin_path = os.path.dirname(__file__)
         self._ui_manager = self.window.get_ui_manager()
         actions = [
-            ['BuildIndexAction',        "Build index",          "",   self.on_build_index],
-            ['UpdateIndexAction',       "Update index",         "",   self.on_update_index],
-            ['ToggleOutlineAction',     "Toogle outline",       "F2", self.on_toggle_outline],
-            ['OpenDeclarationAction',   "Open declaration",     "F3", self.on_open_declaration_view],
-            ['OpenTypeViewAction',      "Open type view",       "F4", self.on_open_type_view],
-            ['SearchIndexAction',       "Search the index",     "<Ctrl>L",   self.on_search_index],
-            ['OpenCallViewAction',      "Open call view",       "",   self.on_open_call_view],
-            ['OpenDepencyViewAction',   "Open depency view",    "",   self.on_open_depency_view],
-            ['ManageIndexPathsAction',  "Manage index paths",   "",   self.on_index_paths_manager],
-            ['PhpAction',               "PHP",                  "",   None],
+            ['PhpAction',               "PHP",                  "",        None],
+            ['BuildIndexAction',        "Build index",          "",        self.on_build_index],
+            ['UpdateIndexAction',       "Update index",         "",        self.on_update_index],
+            ['ToggleOutlineAction',     "Toogle outline",       "<Ctrl>F1", self.on_toggle_outline],
+            ['OpenTypeViewAction',      "Open type view",       "<Ctrl>F2", self.on_open_type_view],
+            ['OpenDeclarationAction',   "Open declaration",     "<Ctrl>F3", self.on_open_declaration_view],
+            ['OpenCallViewAction',      "Open call view",       "<Ctrl>F4", self.on_open_call_view],
+            ['SearchIndexAction',       "Search the index",     "<Ctrl>L", self.on_search_index],
+            ['OpenDepencyViewAction',   "Open depency view",    "",        self.on_open_depency_view],
+            ['ManageIndexPathsAction',  "Manage index paths",   "",        self.on_index_paths_manager],
         ]
 
         self._actions = Gtk.ActionGroup("AddiksPhpMenuActions")
@@ -124,7 +124,7 @@ class AddiksPhpIndexWindow(GObject.Object, Gedit.WindowActivatable):
             else:
                 with open(filePath, "r", encoding = "ISO-8859-1") as f:
                     code = f.read()
-            self.__phpfiles[filePath] = PhpFile(code, self, self.get_index_storage())
+            self.__phpfiles[filePath] = PhpFileAnalyzer(code, self, self.get_index_storage())
         return self.__phpfiles[filePath]
 
     def invalidate_php_fileindex(self, filePath=None):
@@ -401,7 +401,13 @@ class AddiksPhpIndexWindow(GObject.Object, Gedit.WindowActivatable):
 
         line, column = self.get_current_cursor_position()
         if line != None and column != None:
+            builder = self.getGladeBuilder()
+            window = builder.get_object('windowCallers')
+            window.connect('delete-event', lambda w, e: w.hide() or True)
+            window.show_all()
+
             use_statements = self.get_php_fileindex().get_use_statements()
+            declaredPositionExpected = self.get_php_fileindex().get_declared_position_by_position(line, column)
             declarationType, name, containingClassName = self.get_php_fileindex().get_declaration_by_position(line, column)
             namespace = self.get_php_fileindex().get_namespace()
 
@@ -430,12 +436,14 @@ class AddiksPhpIndexWindow(GObject.Object, Gedit.WindowActivatable):
             else:
                 return
 
-            builder = self.getGladeBuilder()
             listStore = builder.get_object('liststoreCallers')
 
             filteredUses = {}
             for filePath, line, column, className, functionName in uses:
-                filteredUses[filePath + ":" + str(line)] = [filePath, line, column, className, functionName]
+                phpFileIndex = self.get_php_fileindex(filePath)
+                declaredPosition = phpFileIndex.get_declared_position_by_position(line, column+1)
+                if declaredPosition[0] == None or declaredPosition == declaredPositionExpected:
+                    filteredUses[filePath + ":" + str(line)] = [filePath, line, column, className, functionName]
             filteredUses = list(filteredUses.values())
             filteredUses.sort(key=self.__filteredUsesKey)
 
@@ -453,10 +461,6 @@ class AddiksPhpIndexWindow(GObject.Object, Gedit.WindowActivatable):
                 listStore.set_value(rowIter, 2, className)
                 listStore.set_value(rowIter, 3, functionName)
                 listStore.set_value(rowIter, 4, preview)
-
-            window = builder.get_object('windowCallers')
-            window.connect('delete-event', lambda w, e: w.hide() or True)
-            window.show_all()
 
     def __filteredUsesKey(self, use):
         return use[3] + str(use[1]) + use[4]

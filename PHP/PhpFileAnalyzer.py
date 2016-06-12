@@ -27,7 +27,7 @@ T_VARIABLE = token_num("T_VARIABLE")
 docCommentRegex = re.compile("\\@([\\\\a-zA-Z_-]+)(([\$ \ta-zA-Z0-9\\\\_-]+)*)")
 whitespaceRegex = re.compile("\s+")
 
-class PhpFile:
+class PhpFileAnalyzer:
 
     def __init__(self, code, plugin, storage):
         self.__plugin  = plugin
@@ -73,6 +73,8 @@ class PhpFile:
 
     def get_declared_position_by_position(self, line, column):
         declaration = self.get_declaration_by_position(line, column)
+        use_statements = self.get_use_statements()
+        namespace = self.get_namespace()
 
         filePath = None
         line     = None
@@ -80,6 +82,10 @@ class PhpFile:
 
         if declaration[0] == 'method':
             decType, methodName, className = declaration
+            if className in use_statements:
+                className = use_statements[className]
+            if className != None and len(className)>0 and className[0] != '\\':
+                className = namespace + '\\' + className
             namespace, className = get_namespace_by_classname(className)
             filePath, line, column = self.__storage.get_method_position(namespace, className, methodName)
             while (line == None or column == None) and className != None:
@@ -146,7 +152,7 @@ class PhpFile:
 
             elif tokens[tokenIndex-1][1] == '->':
                 className = self.get_type_by_token_index(tokenIndex-2)
-                declaration = ['/home/gerrit/.local/share/gedit/plugins/addiks-phpide/PHP/PhpFile.pymember', tokens[tokenIndex][1], className]
+                declaration = ['member', tokens[tokenIndex][1], className]
 
             elif tokens[tokenIndex-1][1] == '::':
                 className = self.get_type_by_token_index(tokenIndex-2)

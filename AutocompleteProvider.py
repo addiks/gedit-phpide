@@ -14,7 +14,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from PHP.PhpFile import PhpFile
 from PHP.get_namespace_by_classname import get_namespace_by_classname
 from AutocompleteProposal import AutocompleteProposal
 from PHP.phplexer import token_name, token_num
@@ -23,8 +22,8 @@ import re
 
 T_STRING      = token_num("T_STRING")
 T_VARIABLE    = token_num("T_VARIABLE")
-T_DOC_COMMENT = token_num("T_DOC_COMMENT");
-T_COMMENT     = token_num("T_COMMENT");
+T_DOC_COMMENT = token_num("T_DOC_COMMENT")
+T_COMMENT     = token_num("T_COMMENT")
 
 class AutocompleteProvider(GObject.Object, GtkSource.CompletionProvider):
    # __gtype_name__ = "GeditAddiksPHPIDEProvider"

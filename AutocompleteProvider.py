@@ -71,7 +71,7 @@ class AutocompleteProvider(GObject.Object, GtkSource.CompletionProvider):
                         namespace, className = get_namespace_by_classname(fullClassName)
                         arguments = storage.get_method_arguments(namespace, className, proposal.get_word())
 
-                if len(arguments) > 0:
+                if type(arguments) == list and len(arguments) > 0:
                     argumentsCodes = []
                     for argumentRow in arguments:
                         if len(argumentRow) > 2:

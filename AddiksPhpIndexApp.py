@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-class AddiksPhpIndex:
+class AddiksPhpIndexApp:
 
     def __init__(self):
         pass
@@ -25,9 +25,9 @@ class AddiksPhpIndex:
 
     @staticmethod
     def get():
-        if AddiksPhpIndex.__instance == None:
-            AddiksPhpIndex.__instance = AddiksPhpIndex()
-        return AddiksPhpIndex.__instance
+        if AddiksPhpIndexApp.__instance == None:
+            AddiksPhpIndexApp.__instance = AddiksPhpIndexApp()
+        return AddiksPhpIndexApp.__instance
 
     ### WINDOW / VIEW MANAGEMENT
 
@@ -42,7 +42,26 @@ class AddiksPhpIndex:
             self.windows.remove(window)
 
     def get_window_by_view(self, view):
+        if view in dir(view):
+            view = view.view
         for window in self.windows:
             if view in window.window.get_views():
                 return window
+
+    ### VIEWS
+
+    views = []
+
+    def get_plugin_view_by_gedit_view(self, geditView):
+        for pluginView in self.views:
+            if pluginView.view == geditView:
+                return pluginView
+
+    def register_view(self, view):
+        if view not in self.views:
+            self.views.append(view)
+
+    def unregister_view(self, view):
+        if view in self.views:
+            self.views.remove(view)
 

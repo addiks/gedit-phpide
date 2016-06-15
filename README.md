@@ -66,7 +66,9 @@ F2: Toggle outline of the current file
 
 F3: Open declaration (of your selection)
 
-F4: Open type view (of your selection)
+F3 + [Alt]: Open type view (of your selection)
+
+F3 + [Ctrl]: Open call view (of your selection)
 
 [Ctrl] + [L]: Open the index-search-window
  

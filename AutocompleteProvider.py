@@ -35,8 +35,8 @@ class AutocompleteProvider(GObject.Object, GtkSource.CompletionProvider):
         self.type = None
         self._info_label = Gtk.Label()
 
-    def set_plugin(self, plugin):
-        self.__addiks_plugin = plugin
+    def set_plugin(self, pluginView):
+        self.__pluginView = pluginView
 
     def mark_position(self, iter):
         self.iter = iter
@@ -49,8 +49,8 @@ class AutocompleteProvider(GObject.Object, GtkSource.CompletionProvider):
         # proposal (GtkSource.CompletionProposal)
         # textIter (Gtk.TextIter)
         completion = proposal.get_completion()
-        storage   = self.__addiks_plugin.get_index_storage()
-        fileIndex = self.__addiks_plugin.get_php_fileindex()
+        storage   = self.__pluginView.get_index_storage()
+        fileIndex = self.__pluginView.get_php_fileindex()
         tokens = fileIndex.get_tokens()
 
         if proposal.get_type() in ['function', 'method']:
@@ -134,7 +134,7 @@ class AutocompleteProvider(GObject.Object, GtkSource.CompletionProvider):
     def do_update_info(self, proposal, info = None):
         # proposal (GtkSource.CompletionProposal)
         # info (GtkSource.CompletionInfo)
-        storage   = self.__addiks_plugin.get_index_storage()
+        storage   = self.__pluginView.get_index_storage()
 
         labelText = None
         if proposal.get_type() == 'function':
@@ -185,11 +185,11 @@ class AutocompleteProvider(GObject.Object, GtkSource.CompletionProvider):
         return True
 
     def do_populate(self, context):
-        if self.__addiks_plugin == None:
+        if self.__pluginView == None:
             return
 
-        storage   = self.__addiks_plugin.get_index_storage()
-        fileIndex = self.__addiks_plugin.get_php_fileindex()
+        storage   = self.__pluginView.get_index_storage()
+        fileIndex = self.__pluginView.get_php_fileindex()
         proposals = []
 
         textIter = context.get_iter()

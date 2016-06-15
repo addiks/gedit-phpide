@@ -60,6 +60,9 @@ class Sqlite3Storage:
             ")"
         );
         cursor.execute(
+            "CREATE INDEX IF NOT EXISTS classes_namespace_name ON classes (namespace, name)"
+        );
+        cursor.execute(
             "CREATE TABLE IF NOT EXISTS classes_interfaces_uses("
                 "id          INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
                 "class_id    INTEGER NOT NULL, "

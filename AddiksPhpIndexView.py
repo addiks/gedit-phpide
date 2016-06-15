@@ -77,11 +77,10 @@ class AddiksPhpIndexView(GObject.Object, Gedit.ViewActivatable):
         return False
 
     def __on_document_saved(self, document, userData=None):
-        window = AddiksPhpIndexApp.get().get_window_by_view(self.view)
-        if window != None and document.get_location() != None:
+        if document.get_location() != None:
             filepath = document.get_location().get_path()
-            indexFilepath = window.get_index_filepath()
-            indexPathManager = window.get_index_path_manager()
+            indexFilepath = self.get_index_filepath()
+            indexPathManager = self.get_index_path_manager()
             index = PhpIndex(indexFilepath, indexPathManager=indexPathManager)
             index.reindex_phpfile(filepath)
 
@@ -474,8 +473,7 @@ class AddiksPhpIndexView(GObject.Object, Gedit.ViewActivatable):
 
     def get_completion_provider(self):
         if self.__completion_provider == None:
-            window = AddiksPhpIndexApp.get().get_window_by_view(self.view)
             self.__completion_provider = AutocompleteProvider()
-            self.__completion_provider.set_plugin(window)
+            self.__completion_provider.set_plugin(self)
         return self.__completion_provider
 

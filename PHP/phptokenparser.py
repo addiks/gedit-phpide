@@ -27,6 +27,31 @@ T_COMMENT     = token_num('T_COMMENT')
 
 def parse_php_tokens(tokens):
 
+    blocks, classes, classconstants, variables, constants, functions, namespace, use_statements, use_statement_index, uses = __find_blocks_classes_functions(tokens)
+
+    blocks.sort(key=operator.itemgetter(0))
+
+    blocks  = __assign_classes_to_codeblocks(blocks, classes)
+    blocks  = __assign_functions_to_codeblocks(blocks, functions)
+
+    filteredBlocks = []
+    for block in blocks:
+        if len(block) > 2:
+            filteredBlocks.append(block)
+    blocks = filteredBlocks
+
+    members = __extract_members_from_variables(blocks, tokens, variables)
+
+    blocks  = __enrich_classes_functions(blocks, tokens, members, classconstants)
+    blocks  = __enrich_methods(blocks, tokens)
+    blocks  = __assign_uses_to_blocks(blocks, uses)
+
+    return (blocks, namespace, use_statements, use_statement_index, constants)
+
+
+def __find_blocks_classes_functions(tokens):
+    # find blocks, classes and functions(/methods)
+
     blocks = []
     blockStack = []
     classes = []
@@ -39,7 +64,6 @@ def parse_php_tokens(tokens):
     use_statement_index = None
     uses = []
 
-    # find blocks, classes and functions(/methods)
     tokenIndex = 0
     for token in tokens:
 
@@ -116,8 +140,10 @@ def parse_php_tokens(tokens):
                 uses.append([tokenIndex, token[2], token[3], tokenText, typeRef])
         tokenIndex += 1
 
-    blocks.sort(key=operator.itemgetter(0))
+    return blocks, classes, classconstants, variables, constants, functions, namespace, use_statements, use_statement_index, uses
 
+
+def __assign_classes_to_codeblocks(blocks, classes):
     # assign classes to codeblocks
     for classIndex in classes:
         classBlockIndex = 0
@@ -127,7 +153,10 @@ def parse_php_tokens(tokens):
                 block.append(classIndex) #3
                 break
             classBlockIndex += 1
+    return blocks
 
+
+def __assign_functions_to_codeblocks(blocks, functions):
     # assign functions/methods to codeblocks
     for functionIndex in functions:
         functionBlockIndex = 0;
@@ -146,9 +175,11 @@ def parse_php_tokens(tokens):
                 block.append(functionIndex)  #3
                 break
             functionBlockIndex += 1
+    return blocks
 
+
+def __extract_members_from_variables(blocks, tokens, variables):
     # extract members from variables
-
     members = []
     for variableIndex in variables:
         isInClass  = False
@@ -163,10 +194,11 @@ def parse_php_tokens(tokens):
                     isInMethod = True
         if isInClass and not isInMethod and tokens[variableIndex-1][1] in ['var', 'protected', 'public', 'private', 'static', 'abstract']:
             members.append(variableIndex)
+    return members
 
 
+def __enrich_classes_functions(blocks, tokens, members, classconstants):
     # enrich classes/functions
-
     for block in blocks:
         if len(block) > 2:
 
@@ -240,43 +272,16 @@ def parse_php_tokens(tokens):
                 if tokens[tokenIndex-1][0] in [T_DOC_COMMENT, T_COMMENT]:
                     docComment = tokens[tokenIndex-1][1]
 
-                arguments = []
-                tokenIndex += 1
-                if tokens[tokenIndex][1] == '(':
-                    while True:
-                        argument = []
-                        tokenIndex += 1
-                        if tokens[tokenIndex][1] == ')':
-                            break
-                        if tokens[tokenIndex][0] in [T_STRING]:
-                            argument.append(tokens[tokenIndex][1])
-                            tokenIndex += 1
-                        else:
-                            argument.append(None)
-                        if tokens[tokenIndex][0] == T_VARIABLE:
-                            argument.append(tokens[tokenIndex][1])
-                            tokenIndex += 1
-                        if tokens[tokenIndex][1] == '=':
-                            defaultValue = ""
-                            while tokens[tokenIndex][1] not in [',', ')']:
-                                tokenIndex += 1
-                                if tokens[tokenIndex][1] != ')':
-                                    defaultValue += tokens[tokenIndex][1]
-                                if tokens[tokenIndex][1] == '(':
-                                    tokenIndex += 1
-                                    defaultValue += tokens[tokenIndex][1] # ')'
-                                    tokenIndex += 1
-                            argument.append(defaultValue)
-                        arguments.append(argument)
-                        if tokens[tokenIndex][1] != ',':
-                            break
+                arguments = __parse_arguments(tokens, tokenIndex)
 
                 block.append(functionName)  # 4
                 block.append(docComment)    # 5
                 block.append(arguments)     # 6
+    return blocks
 
+
+def __enrich_methods(blocks, tokens):
     # enrich methods (needs enriched classes, thats why it's in own iteration)
-
     for block in blocks:
         if len(block) > 2:
 
@@ -298,50 +303,24 @@ def parse_php_tokens(tokens):
                 methodName = tokens[tokenIndex][1]
                 block[3] = tokenIndex
 
-                arguments = []
-                tokenIndex += 1
-                if tokens[tokenIndex][1] == '(':
-                    while True:
-                        argument = []
-                        tokenIndex += 1
-                        if tokens[tokenIndex][1] == ')':
-                            break
-                        if tokens[tokenIndex][0] in [T_STRING]:
-                            argument.append(tokens[tokenIndex][1])
-                            tokenIndex += 1
-                        else:
-                            argument.append(None)
-                        if tokens[tokenIndex][0] == T_VARIABLE:
-                            argument.append(tokens[tokenIndex][1])
-                            tokenIndex += 1
-                        if tokens[tokenIndex][1] == '=':
-                            defaultValue = ""
-                            while tokens[tokenIndex][1] not in [',', ')']:
-                                tokenIndex += 1
-                                if tokens[tokenIndex][1] != ')':
-                                    defaultValue += tokens[tokenIndex][1]
-                                if tokens[tokenIndex][1] == '(':
-                                    tokenIndex += 1
-                                    defaultValue += tokens[tokenIndex][1] # ')'
-                                    tokenIndex += 1
-                            argument.append(defaultValue)
-                        arguments.append(argument)
-                        if tokens[tokenIndex][1] != ',':
-                            break
+                arguments = __parse_arguments(tokens, tokenIndex)
 
                 className = ""
                 for parentBlock in reversed(blocks):
                     if parentBlock[0] < block[0] and parentBlock[1] > block[1]:
                         className = parentBlock[4]
                         break
+
                 block.append(className)     # 4
                 block.append(methodName)    # 5
                 block.append(keywords)      # 6
                 block.append(docComment)    # 7
                 block.append(arguments)     # 8
+    return blocks
 
+
+def __assign_uses_to_blocks(blocks, uses):
     # assign uses to blocks
-
     blockIndex = 0
     for block in blocks:
         blockUses = []
@@ -353,8 +332,40 @@ def parse_php_tokens(tokens):
                 blockUses.append([line, column, tokenText, typeRef])
         blocks[blockIndex].append(blockUses)
         blockIndex += 1
+    return blocks
 
-    return (blocks, namespace, use_statements, use_statement_index, constants)
+def __parse_arguments(tokens, tokenIndex):
+    arguments = []
+    tokenIndex += 1
+    if tokens[tokenIndex][1] == '(':
+        while True:
+            argument = []
+            tokenIndex += 1
+            if tokens[tokenIndex][1] == ')':
+                break
+            if tokens[tokenIndex][0] in [T_STRING]:
+                argument.append(tokens[tokenIndex][1])
+                tokenIndex += 1
+            else:
+                argument.append(None)
+            if tokens[tokenIndex][0] == T_VARIABLE:
+                argument.append(tokens[tokenIndex][1])
+                tokenIndex += 1
+            if tokens[tokenIndex][1] == '=':
+                defaultValue = ""
+                while tokens[tokenIndex][1] not in [',', ')']:
+                    tokenIndex += 1
+                    if tokens[tokenIndex][1] != ')':
+                        defaultValue += tokens[tokenIndex][1]
+                    if tokens[tokenIndex][1] == '(':
+                        tokenIndex += 1
+                        defaultValue += tokens[tokenIndex][1] # ')'
+                        tokenIndex += 1
+                argument.append(defaultValue)
+            arguments.append(argument)
+            if tokens[tokenIndex][1] != ',':
+                break
+    return arguments
 
 
 

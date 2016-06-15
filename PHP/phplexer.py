@@ -158,17 +158,10 @@ keywords = [
 ]
 
 specialChars = [
-    '!==', '===',
-
-    '<=', '>=', '!=', '==', 
-    '+=', '-=', '*=', '/=',
-    '^=', '|=', '%=', 
-
     '<', '>', '+', '-', '*', '/', '%', 
     '(', ')', '[', ']', '{', '}',
     ',', '.', ';', ':', '?', 
-    '^', '~', '&', '|',
-
+    '^', '~', '&', '|', '#',
     '=', '!', '@', '$'
 ]
 
@@ -194,6 +187,9 @@ operators = {
     "++":  token_num('T_INC'),
     "--":  token_num('T_DEC'),
     ".=":  token_num('T_CONCAT_EQUAL'),
+}
+
+operatorsLong = {
     "<<=": token_num('T_SL_EQUAL'),
     ">>=": token_num('T_SR_EQUAL'),
     "===": token_num('T_IS_IDENTICAL'),
@@ -249,8 +245,73 @@ def token_get_all(code, filePath=None):
     while len(code) > 0:
         if isInPhp:
             if code[0] in [' ', '\t', '\r']:
-                col += 1
-                code = code[1:]
+                while len(code) > 0 and code[0] in [' ', '\t', '\r']:
+                    col += 1
+                    code = code[1:]
+
+            elif code[0] in specialChars:
+                if code[0:3] == '/**':
+                    endPos = code.find('*/') + 2
+                    tokenText = code[0:endPos]
+                    code, tokens, row, col = process_token(code, tokens, T_DOC_COMMENT, tokenText, row, col)
+                    comments.append([T_COMMENT, tokenText, row, col])
+
+                elif code[0:2] == '/*':
+                    endPos = code.find('*/') + 2
+                    tokenText = code[0:endPos]
+                    code, tokens, row, col = process_token(code, tokens, T_COMMENT, tokenText, row, col)
+                    comments.append([T_COMMENT, tokenText, row, col])
+
+                elif code[0:2] == '//' or code[0:1] == '#':
+                    endPos = code.find('\n')
+                    if endPos > 0:
+                        tokenText = code[0:endPos + 1]
+                        code, tokens, row, col = process_token(code, tokens, T_COMMENT, tokenText, row, col)
+                        comments.append([T_COMMENT, tokenText, row, col])
+                    else:
+                        comments.append([T_COMMENT, code, row, col])
+                        code = ""
+                elif code[0:3] == '<<<':
+                    tokenText = code[0:3]
+                    heredocName = ""
+                    index = 3
+                    while code[index] != "\n":
+                        heredocName += code[index]
+                        index += 1
+                    tokenText += heredocName
+                    heredocName = heredocName.strip()
+                    if heredocName[0] in ['"', "'"]:
+                        heredocName = heredocName[1:len(heredocName)-2]
+                    while code[index:index+len(heredocName)+1] != '\n' + heredocName:
+                        tokenText += code[index]
+                        index += 1
+                    tokenText += '\n' + heredocName
+                    code, tokens, row, col = process_token(code, tokens, T_HEREDOC, tokenText, row, col)
+
+                elif code[0:3] in operatorsLong:
+                    tokenText = code[0:3]
+                    tokenNum = operatorsLong[tokenText]
+                    code, tokens, row, col = process_token(code, tokens, tokenNum, tokenText, row, col)
+
+                elif code[0:2] in operators:
+                    tokenText = code[0:2]
+                    tokenNum = operators[tokenText]
+                    code, tokens, row, col = process_token(code, tokens, tokenNum, tokenText, row, col)
+
+                elif code[0:1] == '$' and code[1:2] in '_' + string.ascii_letters + string.digits:
+                    tokenText = code[0:2]
+                    index = 2
+                    while code[index] in '_' + string.ascii_letters + string.digits:
+                        tokenText += code[index]
+                        index += 1
+                    code, tokens, row, col = process_token(code, tokens, T_VARIABLE, tokenText, row, col)
+
+                elif code[0:2] == '?>':
+                    code, tokens, row, col = process_token(code, tokens, T_CLOSE_TAG, code[0:2], row, col)
+                    isInPhp = False
+
+                else:
+                    code, tokens, row, col = process_token(code, tokens, T_SINGLE_CHAR, code[0:1], row, col)
 
             elif code[0] == '\n':
                 col = 1
@@ -278,63 +339,6 @@ def token_get_all(code, filePath=None):
                     tokenText += code[index]
                 code, tokens, row, col = process_token(code, tokens, T_CONSTANT_ENCAPSED_STRING, tokenText, row, col)
 
-            elif code[0:3] == '/**':
-                endPos = code.find('*/') + 2
-                tokenText = code[0:endPos]
-                code, tokens, row, col = process_token(code, tokens, T_DOC_COMMENT, tokenText, row, col)
-                comments.append([T_COMMENT, tokenText, row, col])
-
-            elif code[0:2] == '/*':
-                endPos = code.find('*/') + 2
-                tokenText = code[0:endPos]
-                code, tokens, row, col = process_token(code, tokens, T_COMMENT, tokenText, row, col)
-                comments.append([T_COMMENT, tokenText, row, col])
-
-            elif code[0:2] == '//' or code[0:1] == '#':
-                endPos = code.find('\n')
-                if endPos > 0:
-                    tokenText = code[0:endPos + 1]
-                    code, tokens, row, col = process_token(code, tokens, T_COMMENT, tokenText, row, col)
-                    comments.append([T_COMMENT, tokenText, row, col])
-                else:
-                    comments.append([T_COMMENT, code, row, col])
-                    code = ""
-
-            elif code[0:3] == '<<<':
-                tokenText = code[0:3]
-                heredocName = ""
-                index = 3
-                while code[index] != "\n":
-                    heredocName += code[index]
-                    index += 1
-                tokenText += heredocName
-                heredocName = heredocName.strip()
-                if heredocName[0] in ['"', "'"]:
-                    heredocName = heredocName[1:len(heredocName)-2]
-                while code[index:index+len(heredocName)+1] != '\n' + heredocName:
-                    tokenText += code[index]
-                    index += 1
-                tokenText += '\n' + heredocName
-                code, tokens, row, col = process_token(code, tokens, T_HEREDOC, tokenText, row, col)
-
-            elif code[0:2] in operators:
-                tokenText = code[0:2]
-                tokenNum = operators[tokenText]
-                code, tokens, row, col = process_token(code, tokens, tokenNum, tokenText, row, col)
-
-            elif code[0:3] in operators:
-                tokenText = code[0:2]
-                tokenNum = operators[tokenText]
-                code, tokens, row, col = process_token(code, tokens, tokenNum, tokenText, row, col)
-
-            elif code[0:1] == '$' and code[1:2] in '_' + string.ascii_letters + string.digits:
-                tokenText = code[0:2]
-                index = 2
-                while code[index] in '_' + string.ascii_letters + string.digits:
-                    tokenText += code[index]
-                    index += 1
-                code, tokens, row, col = process_token(code, tokens, T_VARIABLE, tokenText, row, col)
-
             elif code[0] in string.digits:
                 tokenText = code[0]
                 index = 1
@@ -342,13 +346,6 @@ def token_get_all(code, filePath=None):
                     tokenText += code[index]
                     index += 1
                 code, tokens, row, col = process_token(code, tokens, T_DNUMBER, tokenText, row, col)
-
-            elif code[0:2] == '?>':
-                code, tokens, row, col = process_token(code, tokens, T_CLOSE_TAG, code[0:2], row, col)
-                isInPhp = False
-
-            elif code[0] in specialChars:
-                code, tokens, row, col = process_token(code, tokens, T_SINGLE_CHAR, code[0:1], row, col)
 
             else:
                 isKeyword = False

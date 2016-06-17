@@ -72,7 +72,10 @@ class PhpFileAnalyzer:
     ### GET DECLARATIONS
 
     def get_declared_position_by_position(self, line, column):
-        declaration = self.get_declaration_by_position(line, column)
+        decType, name, className = self.get_declaration_by_position(line, column)
+        return self.get_declared_position_by_declaration(decType, name, className)
+
+    def get_declared_position_by_declaration(self, decType, decName, className):
         use_statements = self.get_use_statements()
         namespace = self.get_namespace()
 
@@ -80,47 +83,49 @@ class PhpFileAnalyzer:
         line     = None
         column   = None
 
-        if declaration[0] == 'method':
-            decType, methodName, className = declaration
-            if className in use_statements:
-                className = use_statements[className]
-            if className != None and len(className)>0 and className[0] != '\\':
-                className = namespace + '\\' + className
+        if className in use_statements:
+            className = use_statements[className]
+        if className != None and len(className)>0 and className[0] != '\\':
+            className = namespace + '\\' + className
+
+        if decType == 'method':
             namespace, className = get_namespace_by_classname(className)
-            filePath, line, column = self.__storage.get_method_position(namespace, className, methodName)
+            filePath, line, column = self.__storage.get_method_position(namespace, className, decName)
             while (line == None or column == None) and className != None:
                 parentClass = self.__storage.get_class_parent(namespace, className)
                 namespace, className = get_namespace_by_classname(parentClass)
-                filePath, line, column = self.__storage.get_method_position(namespace, className, methodName)
+                filePath, line, column = self.__storage.get_method_position(namespace, className, decName)
 
-        elif declaration[0] == 'function':
-            namespace, functionName = get_namespace_by_classname(declaration[1])
+        elif decType == 'function':
+            namespace, functionName = get_namespace_by_classname(decName)
             filePath, line, column = self.__storage.get_function_position(namespace, functionName)
 
-        elif declaration[0] == 'member':
-            decType, memberName, className = declaration
+        elif decType == 'member':
             namespace, className = get_namespace_by_classname(className)
-            filePath, line, column = self.__storage.get_member_position(namespace, className, "$"+memberName)
+            if decName[0] != "$":
+                decName = "$"+decName
+            filePath, line, column = self.__storage.get_member_position(namespace, className, decName)
             while (line == None or column == None) and className != None:
                 parentClass = self.__storage.get_class_parent(namespace, className)
                 namespace, className = get_namespace_by_classname(parentClass)
-                filePath, line, column = self.__storage.get_member_position(namespace, className, "$"+memberName)
+                if decName[0] != "$":
+                    decName = "$"+decName
+                filePath, line, column = self.__storage.get_member_position(namespace, className, "$"+decName)
 
-        elif declaration[0] == 'class-constant':
-            decType, constantName, className = declaration
+        elif decType == 'class-constant':
             namespace, className = get_namespace_by_classname(className)
-            filePath, line, column = self.__storage.get_class_const_position(namespace, className, constantName)
+            filePath, line, column = self.__storage.get_class_const_position(namespace, className, decName)
             while (line == None or column == None) and className != None:
                 parentClass = self.__storage.get_class_parent(namespace, className)
                 namespace, className = get_namespace_by_classname(parentClass)
-                filePath, line, column = self.__storage.get_class_const_position(namespace, className, constantName)
+                filePath, line, column = self.__storage.get_class_const_position(namespace, className, decName)
 
-        elif declaration[0] == 'class':
-            namespace, className = get_namespace_by_classname(declaration[1])
+        elif decType == 'class':
+            namespace, className = get_namespace_by_classname(decName)
             filePath, line, column = self.__storage.get_class_position(namespace, className)
 
-        elif declaration[0] == 'constant':
-            constantName = declaration[1]
+        elif decType == 'constant':
+            constantName = decName
             filePath, line, column = self.__storage.get_constant_position(constantName)
 
         return (filePath, line, column, )
@@ -171,6 +176,12 @@ class PhpFileAnalyzer:
 
         elif tokens[tokenIndex][1] == ')':
             declaration = self.get_type_by_token_index(tokenIndex-1)
+
+        elif tokens[tokenIndex][0] == T_VARIABLE:
+            if tokens[tokenIndex-1][1] in ['public', 'protected', 'private']:
+                className = self.__get_class_is_in(tokenIndex)
+                declaration = ['member', tokens[tokenIndex][1], className]
+
         return declaration
 
     ### TYPE DETERMINATION

@@ -56,7 +56,7 @@ class AddiksPhpIndexView(GObject.Object, Gedit.ViewActivatable):
 
         document = self.view.get_buffer()
         document.connect("changed", self.__on_document_changed)
-        document.connect("insert-text", self.__on_document_insert)
+  #      document.connect("insert-text", self.__on_document_insert)
         document.connect("saved", self.__on_document_saved)
 
     def do_deactivate(self):
@@ -65,16 +65,53 @@ class AddiksPhpIndexView(GObject.Object, Gedit.ViewActivatable):
     def do_update_state(self):
         pass
 
-    def __on_document_insert(self, document, textIter, text, length, userData=None):
-        if text == ';':
-            pass
-
     def __on_document_changed(self, document, userData=None):
         # make sure the php-file-index gets updated when the text get changed
         if document.get_location() != None:
+
+            insertMark = document.get_insert()
+            insertIter = document.get_iter_at_mark(insertMark)
+            insertedText = ""
+            if insertIter.get_line_offset() > 0:
+                textIter = insertIter.copy()
+                textIter.set_line_offset(textIter.get_line_offset()-1)
+                insertedText = document.get_text(textIter, insertIter, True)
+
+            # added a semicolon? finished writing a statement? maybe we can auto-add something.
+            if insertedText == ';':
+                code = document.get_text(document.get_start_iter(), document.get_end_iter(), True)
+                analyzer = PhpFileAnalyzer(code, self, self.get_index_storage())
+                tokens = analyzer.get_tokens()
+                tokenIndex = analyzer.get_token_index_by_position(textIter.get_line()+1, textIter.get_line_offset()+1)
+
+                declarationType, declaredName, className = analyzer.get_declaration_by_token_index(tokenIndex)
+                filePath, line, column = analyzer.get_declared_position_by_declaration(declarationType, declaredName, className)
+
+                if declarationType == 'member' and  tokens[tokenIndex][2] == line and tokens[tokenIndex][3] == column:
+                    # finished a member, we can auto-add a doc-comment for that
+                    lineBeginIter = document.get_iter_at_line_index(line-1, 0)
+
+                    codeLine = document.get_text(
+                        lineBeginIter,
+                        document.get_iter_at_line_index(line, 0),
+                        True
+                    )
+
+                    indention = ""
+                    while codeLine[len(indention)] in [" ", "\t"]:
+                        indention += codeLine[len(indention)]
+
+                    commentCode  = indention + "/**\n"
+                    commentCode += indention + " * @var mixed\n"
+                    commentCode += indention + " */\n"
+                    GLib.idle_add(self.do_textbuffer_insert, document, lineBeginIter, commentCode)
+
             filepath = document.get_location().get_path()
             self.invalidate_php_fileindex(filepath)
         return False
+
+    def do_textbuffer_insert(self, document, textIter, text):
+        document.insert(textIter, text)
 
     def __on_document_saved(self, document, userData=None):
         if document.get_location() != None:

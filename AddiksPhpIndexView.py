@@ -87,8 +87,6 @@ class AddiksPhpIndexView(GObject.Object, Gedit.ViewActivatable):
                     lineBeginIter = document.get_iter_at_line_index(line-1, 0)
 
                     tokenIndexComment = analyzer.get_token_index_by_position(line, 0)
-                    print(tokens[tokenIndexComment])
-
                     if tokens[tokenIndexComment][0] not in [T_COMMENT, T_DOC_COMMENT]:
                         codeLine = document.get_text(
                             lineBeginIter,

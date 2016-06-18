@@ -20,6 +20,7 @@ from PHP.get_namespace_by_classname import get_namespace_by_classname
 from PHP.PhpFileAnalyzer import PhpFileAnalyzer
 from PHP.PhpIndex import PhpIndex
 from PHP.IndexPathManager import IndexPathManager
+from PHP.phplexer import token_num
 
 from AutocompleteProvider import AutocompleteProvider
 from AddiksPhpIndexApp import AddiksPhpIndexApp
@@ -33,6 +34,9 @@ import os
 import random
 import time
 import subprocess
+
+T_COMMENT     = token_num("T_COMMENT")
+T_DOC_COMMENT = token_num("T_DOC_COMMENT")
 
 class AddiksPhpIndexView(GObject.Object, Gedit.ViewActivatable):
     view = GObject.property(type=Gedit.View)
@@ -56,7 +60,7 @@ class AddiksPhpIndexView(GObject.Object, Gedit.ViewActivatable):
 
         document = self.view.get_buffer()
         document.connect("changed", self.__on_document_changed)
-  #      document.connect("insert-text", self.__on_document_insert)
+        document.connect("insert-text", self.__on_document_insert)
         document.connect("saved", self.__on_document_saved)
 
     def do_deactivate(self):
@@ -65,17 +69,8 @@ class AddiksPhpIndexView(GObject.Object, Gedit.ViewActivatable):
     def do_update_state(self):
         pass
 
-    def __on_document_changed(self, document, userData=None):
-        # make sure the php-file-index gets updated when the text get changed
+    def __on_document_insert(self, document, textIter, insertedText, length, userData=None):
         if document.get_location() != None:
-
-            insertMark = document.get_insert()
-            insertIter = document.get_iter_at_mark(insertMark)
-            insertedText = ""
-            if insertIter.get_line_offset() > 0:
-                textIter = insertIter.copy()
-                textIter.set_line_offset(textIter.get_line_offset()-1)
-                insertedText = document.get_text(textIter, insertIter, True)
 
             # added a semicolon? finished writing a statement? maybe we can auto-add something.
             if insertedText == ';':
@@ -91,26 +86,35 @@ class AddiksPhpIndexView(GObject.Object, Gedit.ViewActivatable):
                     # finished a member, we can auto-add a doc-comment for that
                     lineBeginIter = document.get_iter_at_line_index(line-1, 0)
 
-                    codeLine = document.get_text(
-                        lineBeginIter,
-                        document.get_iter_at_line_index(line, 0),
-                        True
-                    )
+                    tokenIndexComment = analyzer.get_token_index_by_position(line, 0)
+                    print(tokens[tokenIndexComment])
 
-                    indention = ""
-                    while codeLine[len(indention)] in [" ", "\t"]:
-                        indention += codeLine[len(indention)]
+                    if tokens[tokenIndexComment][0] not in [T_COMMENT, T_DOC_COMMENT]:
+                        codeLine = document.get_text(
+                            lineBeginIter,
+                            document.get_iter_at_line_index(line, 0),
+                            True
+                        )
 
-                    commentCode  = indention + "/**\n"
-                    commentCode += indention + " * @var mixed\n"
-                    commentCode += indention + " */\n"
-                    GLib.idle_add(self.do_textbuffer_insert, document, lineBeginIter, commentCode)
+                        indention = ""
+                        while codeLine[len(indention)] in [" ", "\t"]:
+                            indention += codeLine[len(indention)]
+
+                        commentCode  = indention + "/**\n"
+                        commentCode += indention + " * @var mixed\n"
+                        commentCode += indention + " */\n"
+                        GLib.idle_add(self.do_textbuffer_insert, document, line-1, 0, commentCode)
+
+    def __on_document_changed(self, document, userData=None):
+        # make sure the php-file-index gets updated when the text get changed
+        if document.get_location() != None:
 
             filepath = document.get_location().get_path()
             self.invalidate_php_fileindex(filepath)
         return False
 
-    def do_textbuffer_insert(self, document, textIter, text):
+    def do_textbuffer_insert(self, document, line, column, text):
+        textIter = document.get_iter_at_line_index(line, column)
         document.insert(textIter, text)
 
     def __on_document_saved(self, document, userData=None):

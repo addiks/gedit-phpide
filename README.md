@@ -7,9 +7,11 @@ This plugin contains features that are crucial for PHP-development using a proje
 
  * Autocompletion
  * Open declaration
- * Automaticly write USE-statements
  * Type-View
- * Outline
+ * Caller-View (Where is this used?)
+ * Automaticly write USE-statements
+ * Automaticly add doc-comments to new members
+ * Outline (Uses code-folding)
  * Project-wide search
  * Include and Exclude folders from index
  

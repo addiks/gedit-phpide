@@ -14,10 +14,41 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-class AddiksPhpIndexApp:
+from gi.repository import GLib, Gtk, GObject, Gedit, Gio, Notify
+
+ACTIONS = [
+    ['PhpAction',               "PHP",                  "",         None],
+    ['BuildIndexAction',        "Build index",          "",         "on_build_index"],
+    ['UpdateIndexAction',       "Update index",         "",         "on_update_index"],
+    ['ToggleOutlineAction',     "Toogle outline",       "F2",       "on_toggle_outline"],
+    ['OpenDeclarationAction',   "Open declaration",     "F3",       "on_open_declaration_view"],
+    ['OpenTypeViewAction',      "Open type view",       "<Alt>F3",  "on_open_type_view"],
+    ['OpenCallViewAction',      "Open call view",       "<Ctrl>F3", "on_open_call_view"],
+    ['SearchIndexAction',       "Search the index",     "<Ctrl>L",  "on_search_index"],
+    ['OpenDepencyViewAction',   "Open depency view",    "",         "on_open_depency_view"],
+    ['ManageIndexPathsAction',  "Manage index paths",   "",         "on_index_paths_manager"],
+]
+
+class AddiksPhpIndexApp(GObject.Object, Gedit.AppActivatable):
+    app = GObject.property(type=Gedit.App)
 
     def __init__(self):
-        pass
+        GObject.Object.__init__(self)
+        Notify.init("gedit_addiks_phpide")
+
+    def do_activate(self):
+        AddiksPhpIndexApp.__instance = self
+
+        if "extend_menu" in dir(self): # build menu for gedit 3.12 (one menu per application)
+            self.submenu_ext = self.extend_menu("tools-section-1")
+            submenu = Gio.Menu()
+            item = Gio.MenuItem.new_submenu(_("PHP"), submenu)
+            self.submenu_ext.append_menu_item(item)
+
+            for actionName, title, shortcut, callbackName in ACTIONS:
+                if callbackName != None:
+                    item = Gio.MenuItem.new(title, "win.%s" % actionName)
+                    submenu.append_item(item)
 
     ### SINGLETON
 

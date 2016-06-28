@@ -247,7 +247,7 @@ class Sqlite3Storage:
     def get_class_position(self, namespace, className):
         cursor = self._cursor
         file_path, line, column = (None, None, None, )
-        while namespace[0] == '\\':
+        while len(namespace) > 0 and namespace[0] == '\\':
             namespace = namespace[1:]
         cursor.execute(
             "SELECT file_path, line, column "

@@ -267,7 +267,7 @@
             <child>
               <object class="GtkButton" id="buttonIndexPathManagerCancel">
                 <property name="label">gtk-cancel</property>
-                <property name="related_action"/>
+<!--                <property name="related_action"/> -->
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>

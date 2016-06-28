@@ -34,6 +34,8 @@ T_COMMENT     = token_num("T_COMMENT")
 class PhpIndex:
 
     def __init__(self, index_path, update_callback=None, error_callback=None, finished_callback=None, indexPathManager=None):
+        if index_path == None:
+            raise Exception("Cannot open index '"+indexPath+"'!")
         self._parsers = {}
         self._index_path_manager = indexPathManager
         self._index_path = index_path

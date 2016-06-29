@@ -32,17 +32,16 @@ class AddiksPhpIndexWindow(GObject.Object, Gedit.WindowActivatable):
         plugin_path = os.path.dirname(__file__)
 
         self._actions = Gtk.ActionGroup("AddiksPhpMenuActions")
-        self._actionsGio = {}
         for actionName, title, shortcut, callbackName in ACTIONS:
             action = Gio.SimpleAction(name=actionName)
             callback = None
             if callbackName != None:
                 callback = getattr(self, callbackName)
                 action.connect('activate', callback)
-            self._actions.add_actions([(actionName, Gtk.STOCK_INFO, title, shortcut, "", callback),])
-            self._actionsGio[actionName] = action
             self.window.add_action(action)
             self.window.lookup_action(actionName).set_enabled(True)
+
+            self._actions.add_actions([(actionName, Gtk.STOCK_INFO, title, shortcut, "", callback),])
 
         if "get_ui_manager" in dir(self.window):# build menu for gedit 3.10 (global menu per window)
             self._ui_manager = self.window.get_ui_manager()

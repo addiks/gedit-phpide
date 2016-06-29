@@ -17,7 +17,6 @@
 from gi.repository import GLib, Gtk, GObject, Gedit, Gio, Notify
 
 ACTIONS = [
-    ['PhpAction',               "PHP",                  "",         None],
     ['BuildIndexAction',        "Build index",          "",         "on_build_index"],
     ['UpdateIndexAction',       "Update index",         "",         "on_update_index"],
     ['ToggleOutlineAction',     "Toogle outline",       "F2",       "on_toggle_outline"],
@@ -39,16 +38,20 @@ class AddiksPhpIndexApp(GObject.Object, Gedit.AppActivatable):
     def do_activate(self):
         AddiksPhpIndexApp.__instance = self
 
+
         if "extend_menu" in dir(self): # build menu for gedit 3.12 (one menu per application)
-            self.submenu_ext = self.extend_menu("tools-section-1")
             submenu = Gio.Menu()
             item = Gio.MenuItem.new_submenu(_("PHP"), submenu)
-            self.submenu_ext.append_menu_item(item)
+
+            mainMenu = self.app.get_menubar()
+            mainMenu.append_item(item)
 
             for actionName, title, shortcut, callbackName in ACTIONS:
-                if callbackName != None:
-                    item = Gio.MenuItem.new(title, "win.%s" % actionName)
-                    submenu.append_item(item)
+                item = Gio.MenuItem.new(title, "win.%s" % actionName)
+                if len(shortcut) > 0:
+                    item.set_attribute_value("accel", GLib.Variant.new_string(shortcut))
+                    self.app.set_accels_for_action("win.%s" % actionName, [shortcut])
+                submenu.append_item(item)
 
     ### SINGLETON
 

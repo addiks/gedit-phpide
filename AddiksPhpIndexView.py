@@ -80,10 +80,10 @@ class AddiksPhpIndexView(GObject.Object, Gedit.ViewActivatable):
                 tokenIndex = analyzer.get_token_index_by_position(textIter.get_line()+1, textIter.get_line_offset()+1)
 
                 declarationType, declaredName, className = analyzer.get_declaration_by_token_index(tokenIndex)
-                filePath, line, column = analyzer.get_declared_position_by_declaration(declarationType, declaredName, className)
 
-                if declarationType == 'member' and  tokens[tokenIndex][2] == line and tokens[tokenIndex][3] == column:
+                if declarationType == 'member' and tokens[tokenIndex][1] == declaredName:
                     # finished a member, we can auto-add a doc-comment for that
+                    line = tokens[tokenIndex][2]
                     lineBeginIter = document.get_iter_at_line_index(line-1, 0)
 
                     tokenIndexComment = analyzer.get_token_index_by_position(line, 0)

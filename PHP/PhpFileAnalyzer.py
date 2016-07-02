@@ -138,49 +138,50 @@ class PhpFileAnalyzer:
         tokens = self.__tokens
         declaration = [None, None, None]
 
-        if tokens[tokenIndex][0] == T_STRING:
-            if tokens[tokenIndex+1][1] == '(' and tokens[tokenIndex-1][1] != 'new':
-                if tokens[tokenIndex-1][1] == 'function':
-                    if self.__is_in_class(tokenIndex): # method declaration
-                        className = self.__get_class_is_in(tokenIndex)
+        if tokenIndex != None:
+            if tokens[tokenIndex][0] == T_STRING:
+                if tokens[tokenIndex+1][1] == '(' and tokens[tokenIndex-1][1] != 'new':
+                    if tokens[tokenIndex-1][1] == 'function':
+                        if self.__is_in_class(tokenIndex): # method declaration
+                            className = self.__get_class_is_in(tokenIndex)
+                            declaration = ['method', tokens[tokenIndex][1], className]
+
+                        else: # function declaration
+                            declaration = ['function', tokens[tokenIndex][1], None]
+
+                    elif tokens[tokenIndex-1][1] in ['->', '::']: # method call
+                        className = self.get_type_by_token_index(tokenIndex-2)
                         declaration = ['method', tokens[tokenIndex][1], className]
 
-                    else: # function declaration
+                    else: # function call
                         declaration = ['function', tokens[tokenIndex][1], None]
 
-                elif tokens[tokenIndex-1][1] in ['->', '::']: # method call
+                elif tokens[tokenIndex-1][1] == '->':
                     className = self.get_type_by_token_index(tokenIndex-2)
-                    declaration = ['method', tokens[tokenIndex][1], className]
+                    declaration = ['member', tokens[tokenIndex][1], className]
 
-                else: # function call
-                    declaration = ['function', tokens[tokenIndex][1], None]
+                elif tokens[tokenIndex-1][1] == '::':
+                    className = self.get_type_by_token_index(tokenIndex-2)
+                    declaration = ['class-constant', tokens[tokenIndex][1], className]
 
-            elif tokens[tokenIndex-1][1] == '->':
-                className = self.get_type_by_token_index(tokenIndex-2)
-                declaration = ['member', tokens[tokenIndex][1], className]
+                elif tokens[tokenIndex+1][1] in ['::', '->'] or tokens[tokenIndex-1][1] in ['new', 'class', 'interface', 'trait', 'extends', 'implements']:
+                    className = self.__map_classname_by_use_statements(tokens[tokenIndex][1], tokenIndex)
+                    declaration = ['class', className, None]
 
-            elif tokens[tokenIndex-1][1] == '::':
-                className = self.get_type_by_token_index(tokenIndex-2)
-                declaration = ['class-constant', tokens[tokenIndex][1], className]
+                elif tokens[tokenIndex+1][0] == T_VARIABLE:
+                    className = self.__map_classname_by_use_statements(tokens[tokenIndex][1], tokenIndex)
+                    declaration = ['class', className, None]
 
-            elif tokens[tokenIndex+1][1] in ['::', '->'] or tokens[tokenIndex-1][1] in ['new', 'class', 'interface', 'trait', 'extends', 'implements']:
-                className = self.__map_classname_by_use_statements(tokens[tokenIndex][1], tokenIndex)
-                declaration = ['class', className, None]
+                else:
+                    declaration = ['constant', tokens[tokenIndex][1], None]
 
-            elif tokens[tokenIndex+1][0] == T_VARIABLE:
-                className = self.__map_classname_by_use_statements(tokens[tokenIndex][1], tokenIndex)
-                declaration = ['class', className, None]
+            elif tokens[tokenIndex][1] == ')':
+                declaration = self.get_type_by_token_index(tokenIndex-1)
 
-            else:
-                declaration = ['constant', tokens[tokenIndex][1], None]
-
-        elif tokens[tokenIndex][1] == ')':
-            declaration = self.get_type_by_token_index(tokenIndex-1)
-
-        elif tokens[tokenIndex][0] == T_VARIABLE:
-            if tokens[tokenIndex-1][1] in ['public', 'protected', 'private']:
-                className = self.__get_class_is_in(tokenIndex)
-                declaration = ['member', tokens[tokenIndex][1], className]
+            elif tokens[tokenIndex][0] == T_VARIABLE:
+                if tokens[tokenIndex-1][1] in ['public', 'protected', 'private']:
+                    className = self.__get_class_is_in(tokenIndex)
+                    declaration = ['member', tokens[tokenIndex][1], className]
 
         return declaration
 

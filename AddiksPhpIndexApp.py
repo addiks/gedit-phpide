@@ -23,7 +23,7 @@ ACTIONS = [
     ['OpenDeclarationAction',   "Open declaration",     "F3",       "on_open_declaration_view"],
     ['OpenTypeViewAction',      "Open type view",       "<Alt>F3",  "on_open_type_view"],
     ['OpenCallViewAction',      "Open call view",       "<Ctrl>F3", "on_open_call_view"],
-    ['SearchIndexAction',       "Search the index",     "<Ctrl>L",  "on_search_index"],
+    ['SearchIndexAction',       "Search the index",     "<Alt>L",  "on_search_index"],
     ['OpenDepencyViewAction',   "Open depency view",    "",         "on_open_depency_view"],
     ['ManageIndexPathsAction',  "Manage index paths",   "",         "on_index_paths_manager"],
 ]
@@ -37,7 +37,6 @@ class AddiksPhpIndexApp(GObject.Object, Gedit.AppActivatable):
 
     def do_activate(self):
         AddiksPhpIndexApp.__instance = self
-
 
         if "extend_menu" in dir(self): # build menu for gedit 3.12 (one menu per application)
             submenu = Gio.Menu()

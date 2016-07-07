@@ -37,6 +37,7 @@ import subprocess
 
 T_COMMENT     = token_num("T_COMMENT")
 T_DOC_COMMENT = token_num("T_DOC_COMMENT")
+T_VARIABLE    = token_num("T_VARIABLE")
 
 class AddiksPhpIndexView(GObject.Object, Gedit.ViewActivatable):
     view = GObject.property(type=Gedit.View)
@@ -72,7 +73,7 @@ class AddiksPhpIndexView(GObject.Object, Gedit.ViewActivatable):
     def __on_document_insert(self, document, textIter, insertedText, length, userData=None):
         if document.get_location() != None:
 
-            # added a semicolon? finished writing a statement? maybe we can auto-add something.
+            # adding a semicolon could mean the user finished writing a statement. maybe we can auto-add something.
             if insertedText == ';':
                 code = document.get_text(document.get_start_iter(), document.get_end_iter(), True)
                 analyzer = PhpFileAnalyzer(code, self, self.get_index_storage())
@@ -103,6 +104,59 @@ class AddiksPhpIndexView(GObject.Object, Gedit.ViewActivatable):
                         commentCode += indention + " */\n"
                         GLib.idle_add(self.do_textbuffer_insert, document, line-1, 0, commentCode)
 
+            # adding an equal sign could mean the user is writing a new variable. maybe we can add a doc-comment.
+            if insertedText == '=':
+                code = document.get_text(document.get_start_iter(), document.get_end_iter(), True)
+                analyzer = PhpFileAnalyzer(code, self, self.get_index_storage())
+                tokens = analyzer.get_tokens()
+                tokenIndex = analyzer.get_token_index_by_position(textIter.get_line()+1, textIter.get_line_offset()+1)
+
+                if tokens[tokenIndex][0] == T_VARIABLE and tokens[tokenIndex-1][1] in [';', '{']:
+                    methodBlock = analyzer.get_method_block_is_in(tokenIndex)
+                    if methodBlock != None:
+                        variableName = tokens[tokenIndex][1]
+
+                        isFirstUsage = True
+                        for token in tokens[methodBlock[0]:tokenIndex]:
+                            if tokens[0] == T_VARIABLE and token[1] == variableName:
+                                isFirstUsage = False
+                                break
+
+                        if isFirstUsage:
+                            # added a new variable, we can auto-add a doc-comment for that
+                            line = tokens[tokenIndex][2]
+                            lineBeginIter = document.get_iter_at_line_index(line-1, 0)
+
+                            codeLine = document.get_text(
+                                lineBeginIter,
+                                document.get_iter_at_line_index(line, 0),
+                                True
+                            )
+
+                            indention = ""
+                            while codeLine[len(indention)] in [" ", "\t"]:
+                                indention += codeLine[len(indention)]
+
+                            commentCode = indention + "/* @var " + variableName + " mixed */\n"
+                            GLib.idle_add(self.do_textbuffer_insert, document, line-1, 0, commentCode)
+
+            if insertedText == '\n':
+                # new line, add indention
+                line = textIter.get_line()
+                lineBeginIter = document.get_iter_at_line_index(line, 0)
+
+                codeLine = document.get_text(
+                    lineBeginIter,
+                    document.get_iter_at_line_index(line+1, 0),
+                    True
+                )
+
+                indention = ""
+                while codeLine[len(indention)] in [" ", "\t"]:
+                    indention += codeLine[len(indention)]
+
+                GLib.idle_add(self.do_textbuffer_insert, document, line+1, 0, indention)
+
     def __on_document_changed(self, document, userData=None):
         # make sure the php-file-index gets updated when the text get changed
         if document.get_location() != None:
@@ -116,6 +170,9 @@ class AddiksPhpIndexView(GObject.Object, Gedit.ViewActivatable):
         document.insert(textIter, text)
 
     def __on_document_saved(self, document, userData=None):
+        start_new_thread(self.__do_on_document_saved, (document, userData))
+
+    def __do_on_document_saved(self, document, userData=None):
         if document.get_location() != None:
             filepath = document.get_location().get_path()
             indexFilepath = self.get_index_filepath()
@@ -515,4 +572,3 @@ class AddiksPhpIndexView(GObject.Object, Gedit.ViewActivatable):
             self.__completion_provider = AutocompleteProvider()
             self.__completion_provider.set_plugin(self)
         return self.__completion_provider
-

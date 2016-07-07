@@ -142,8 +142,8 @@ class PhpFileAnalyzer:
             if tokens[tokenIndex][0] == T_STRING:
                 if tokens[tokenIndex+1][1] == '(' and tokens[tokenIndex-1][1] != 'new':
                     if tokens[tokenIndex-1][1] == 'function':
-                        if self.__is_in_class(tokenIndex): # method declaration
-                            className = self.__get_class_is_in(tokenIndex)
+                        if self.is_in_class(tokenIndex): # method declaration
+                            className = self.get_class_is_in(tokenIndex)
                             declaration = ['method', tokens[tokenIndex][1], className]
 
                         else: # function declaration
@@ -180,7 +180,7 @@ class PhpFileAnalyzer:
 
             elif tokens[tokenIndex][0] == T_VARIABLE:
                 if tokens[tokenIndex-1][1] in ['public', 'protected', 'private']:
-                    className = self.__get_class_is_in(tokenIndex)
+                    className = self.get_class_is_in(tokenIndex)
                     declaration = ['member', tokens[tokenIndex][1], className]
 
         return declaration
@@ -309,8 +309,8 @@ class PhpFileAnalyzer:
         tokens = self.__tokens
         needleVariableName = tokens[tokenIndex][1]
 
-        if needleVariableName == '$this' and self.__is_in_method(tokenIndex):
-            typeId = self.__get_class_is_in(tokenIndex)
+        if needleVariableName == '$this' and self.is_in_method(tokenIndex):
+            typeId = self.get_class_is_in(tokenIndex)
 
         else:
 
@@ -409,10 +409,10 @@ class PhpFileAnalyzer:
 
         if className in ['self', 'static', 'parent'] and tokenIndex != None:
             if className in ['self', 'static']:
-                className = self.__get_class_is_in(tokenIndex)
+                className = self.get_class_is_in(tokenIndex)
 
             elif className == 'parent':
-                className = self.__get_class_is_in(tokenIndex)
+                className = self.get_class_is_in(tokenIndex)
                 namespace, className = get_namespace_by_classname(className)
                 className = self.__storage.get_class_parent(namespace, className)
 
@@ -439,19 +439,31 @@ class PhpFileAnalyzer:
                 typeId = self.__map_classname_by_use_statements(returnType)
         return typeId
 
-    def __is_in_method(self, tokenIndex):
+    def is_in_method(self, tokenIndex):
         for block in self.__blocks:
             if len(block)>2 and block[2] == 'method' and block[0] < tokenIndex and block[1] > tokenIndex:
                 return True
         return False
 
-    def __is_in_class(self, tokenIndex):
+    def get_method_is_in(self, tokenIndex):
+        for block in self.__blocks:
+            if len(block)>2 and block[2] == 'method' and block[0] < tokenIndex and block[1] > tokenIndex:
+                return block[4]
+        return None
+
+    def get_method_block_is_in(self, tokenIndex):
+        for block in self.__blocks:
+            if len(block)>2 and block[2] == 'method' and block[0] < tokenIndex and block[1] > tokenIndex:
+                return block
+        return None
+
+    def is_in_class(self, tokenIndex):
         for block in self.__blocks:
             if len(block)>2 and block[2] == 'class' and block[0] < tokenIndex and block[1] > tokenIndex:
                 return True
         return False
 
-    def __get_class_is_in(self, tokenIndex):
+    def get_class_is_in(self, tokenIndex):
         for block in self.__blocks:
             if len(block)>2 and block[2] == 'class' and block[0] < tokenIndex and block[1] > tokenIndex:
                 return block[4]

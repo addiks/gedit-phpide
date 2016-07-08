@@ -17,6 +17,7 @@
 from gi.repository import GLib, Gtk, GObject, Gedit, Gio, Notify
 
 ACTIONS = [
+    ['PhpAction',               "",                     "",         None],
     ['BuildIndexAction',        "Build index",          "",         "on_build_index"],
     ['UpdateIndexAction',       "Update index",         "",         "on_update_index"],
     ['ToggleOutlineAction',     "Toogle outline",       "F2",       "on_toggle_outline"],
@@ -46,11 +47,12 @@ class AddiksPhpIndexApp(GObject.Object, Gedit.AppActivatable):
             mainMenu.append_item(item)
 
             for actionName, title, shortcut, callbackName in ACTIONS:
-                item = Gio.MenuItem.new(title, "win.%s" % actionName)
-                if len(shortcut) > 0:
-                    item.set_attribute_value("accel", GLib.Variant.new_string(shortcut))
-                    self.app.set_accels_for_action("win.%s" % actionName, [shortcut])
-                submenu.append_item(item)
+                if callbackName != None:
+                    item = Gio.MenuItem.new(title, "win.%s" % actionName)
+                    if len(shortcut) > 0:
+                        item.set_attribute_value("accel", GLib.Variant.new_string(shortcut))
+                        self.app.set_accels_for_action("win.%s" % actionName, [shortcut])
+                    submenu.append_item(item)
 
     ### SINGLETON
 
@@ -97,4 +99,3 @@ class AddiksPhpIndexApp(GObject.Object, Gedit.AppActivatable):
     def unregister_view(self, view):
         if view in self.views:
             self.views.remove(view)
-

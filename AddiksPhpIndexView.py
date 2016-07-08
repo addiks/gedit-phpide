@@ -96,7 +96,7 @@ class AddiksPhpIndexView(GObject.Object, Gedit.ViewActivatable):
                         )
 
                         indention = ""
-                        while codeLine[len(indention)] in [" ", "\t"]:
+                        while codeLine[len(indention)] in [" ", "\t", "*"]:
                             indention += codeLine[len(indention)]
 
                         commentCode  = indention + "/**\n"
@@ -134,7 +134,7 @@ class AddiksPhpIndexView(GObject.Object, Gedit.ViewActivatable):
                             )
 
                             indention = ""
-                            while codeLine[len(indention)] in [" ", "\t"]:
+                            while codeLine[len(indention)] in [" ", "\t", "*"]:
                                 indention += codeLine[len(indention)]
 
                             commentCode = indention + "/* @var " + variableName + " mixed */\n"
@@ -152,7 +152,7 @@ class AddiksPhpIndexView(GObject.Object, Gedit.ViewActivatable):
                 )
 
                 indention = ""
-                while codeLine[len(indention)] in [" ", "\t"]:
+                while codeLine[len(indention)] in [" ", "\t", "*"]:
                     indention += codeLine[len(indention)]
 
                 GLib.idle_add(self.do_textbuffer_insert, document, line+1, 0, indention)

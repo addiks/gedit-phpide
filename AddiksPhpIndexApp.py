@@ -17,7 +17,7 @@
 from gi.repository import GLib, Gtk, GObject, Gedit, Gio, Notify
 
 ACTIONS = [
-    ['PhpAction',               "",                     "",         None],
+    ['PhpAction',               "PHP",                  "",         None],
     ['BuildIndexAction',        "Build index",          "",         "on_build_index"],
     ['UpdateIndexAction',       "Update index",         "",         "on_update_index"],
     ['ToggleOutlineAction',     "Toogle outline",       "F2",       "on_toggle_outline"],

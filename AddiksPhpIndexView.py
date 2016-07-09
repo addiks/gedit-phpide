@@ -233,38 +233,40 @@ class AddiksPhpIndexView(GObject.Object, Gedit.ViewActivatable):
             declarationType, name, containingClassName = self.get_php_fileindex().get_declaration_by_position(line, column)
             namespace = self.get_php_fileindex().get_namespace()
 
+            className = ""
             if declarationType == 'class':
                 className = name
 
             elif containingClassName != None:
                 className = containingClassName
 
-            if className[0] != '\\':
-                className = namespace + '\\' + className
+            if len(className)>0:
+                if className[0] != '\\':
+                    className = namespace + '\\' + className
 
-            hierarchy = self.get_class_hierarchy(className)
-            if hierarchy != None:
+                hierarchy = self.get_class_hierarchy(className)
+                if hierarchy != None:
 
-                # create treestore from hierarchy
-                treeStore = Gtk.TreeStore(str)
-                className = list(hierarchy)[0]
-                hierarchy = hierarchy[className]
-                self.__type_view_treestore_add_row(treeStore, None, className, hierarchy)
+                    # create treestore from hierarchy
+                    treeStore = Gtk.TreeStore(str)
+                    className = list(hierarchy)[0]
+                    hierarchy = hierarchy[className]
+                    self.__type_view_treestore_add_row(treeStore, None, className, hierarchy)
 
-                treeView = Gtk.TreeView(model=treeStore)
-                treeView.set_headers_visible(False)
-                treeView.append_column(Gtk.TreeViewColumn("class", Gtk.CellRendererText(), text=0))
-                treeView.expand_all()
-                treeView.connect("row-activated", self.__on_typeview_row_activated)
+                    treeView = Gtk.TreeView(model=treeStore)
+                    treeView.set_headers_visible(False)
+                    treeView.append_column(Gtk.TreeViewColumn("class", Gtk.CellRendererText(), text=0))
+                    treeView.expand_all()
+                    treeView.connect("row-activated", self.__on_typeview_row_activated)
 
-                scrolledWindow = Gtk.ScrolledWindow()
-                scrolledWindow.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
-                scrolledWindow.add(treeView)
+                    scrolledWindow = Gtk.ScrolledWindow()
+                    scrolledWindow.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+                    scrolledWindow.add(treeView)
 
-                window = Gtk.Window(title="Typeview of "+className)
-                window.set_default_size(50, 250)
-                window.add(scrolledWindow)
-                window.show_all()
+                    window = Gtk.Window(title="Typeview of "+className)
+                    window.set_default_size(50, 250)
+                    window.add(scrolledWindow)
+                    window.show_all()
 
     def __on_typeview_row_activated(self, treeView, path, column, userData=None):
         storage = self.get_index_storage()

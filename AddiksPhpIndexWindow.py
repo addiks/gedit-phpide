@@ -25,11 +25,10 @@ class AddiksPhpIndexWindow(GObject.Object, Gedit.WindowActivatable):
     def __init__(self):
         GObject.Object.__init__(self)
         self._ui_manager = None
+        self._is_ui_added = False
 
     def do_activate(self):
         AddiksPhpIndexApp.get().register_window(self)
-
-        plugin_path = os.path.dirname(__file__)
 
         self._actions = Gtk.ActionGroup("AddiksPhpMenuActions")
         for actionName, title, shortcut, callbackName in ACTIONS:
@@ -45,13 +44,9 @@ class AddiksPhpIndexWindow(GObject.Object, Gedit.WindowActivatable):
 
         if "get_ui_manager" in dir(self.window):# build menu for gedit 3.10 (global menu per window)
             self._ui_manager = self.window.get_ui_manager()
-
-            with open(plugin_path + "/menubar.xml", "r", encoding = "ISO-8859-1") as f:
-                menubarXml = f.read()
-
             self._ui_manager.insert_action_group(self._actions)
-            self._ui_merge_id = self._ui_manager.add_ui_from_string(menubarXml)
-            self._ui_manager.ensure_update()
+
+        self.do_update_state()
 
     def do_deactivate(self):
         AddiksPhpIndexApp.get().unregister_window(self)
@@ -61,8 +56,17 @@ class AddiksPhpIndexWindow(GObject.Object, Gedit.WindowActivatable):
 
         if self._ui_manager != None and document != None and document.get_location() != None:
             path = document.get_location().get_path()
-            if path[-4:] != '.php' and path[-6:] != '.phtml':
+            if path[-4:] != '.php' and path[-6:] != '.phtml' and self._is_ui_added:
                 self._ui_manager.remove_ui(self._ui_merge_id)
+                self._is_ui_added = False
+
+            elif (path[-4:] == '.php' or path[-6:] == '.phtml') and not self._is_ui_added:
+                self._is_ui_added = True
+                plugin_path = os.path.dirname(__file__)
+                with open(plugin_path + "/menubar.xml", "r", encoding = "ISO-8859-1") as f:
+                    menubarXml = f.read()
+                self._ui_merge_id = self._ui_manager.add_ui_from_string(menubarXml)
+                self._ui_manager.ensure_update()
 
     ### MENU EVENTS
 
@@ -109,4 +113,3 @@ class AddiksPhpIndexWindow(GObject.Object, Gedit.WindowActivatable):
         geditView = self.window.get_active_view()
         pluginView = AddiksPhpIndexApp.get().get_plugin_view_by_gedit_view(geditView)
         return pluginView
-

@@ -118,7 +118,7 @@ class AddiksPhpIndexView(GObject.Object, Gedit.ViewActivatable):
 
                         isFirstUsage = True
                         for token in tokens[methodBlock[0]:tokenIndex]:
-                            if tokens[0] == T_VARIABLE and token[1] == variableName:
+                            if token[0] == T_VARIABLE and token[1] == variableName:
                                 isFirstUsage = False
                                 break
 
@@ -139,6 +139,10 @@ class AddiksPhpIndexView(GObject.Object, Gedit.ViewActivatable):
 
                             commentCode = indention + "/* @var " + variableName + " mixed */\n"
                             GLib.idle_add(self.do_textbuffer_insert, document, line-1, 0, commentCode)
+
+            # finished writing a method or function?
+            if insertedText in [';', '}']:
+                pass # TODO
 
             if insertedText == '\n':
                 # new line, add indention

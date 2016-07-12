@@ -71,94 +71,62 @@ class AddiksPhpIndexView(GObject.Object, Gedit.ViewActivatable):
         pass
 
     def __on_document_insert(self, document, textIter, insertedText, length, userData=None):
-        if document.get_location() != None:
+        if document.get_location() != None and insertedText in ['\n', ';', '=', '}']:
 
-            # adding a semicolon could mean the user finished writing a statement. maybe we can auto-add something.
-            if insertedText == ';':
+            line = textIter.get_line()
+            lineBeginIter = document.get_iter_at_line_index(line, 0)
+
+            codeLine = document.get_text(lineBeginIter, document.get_iter_at_line_index(line+1, 0), True)
+
+            indention = ""
+            while codeLine[len(indention)] in [" ", "\t", "*"]:
+                indention += codeLine[len(indention)]
+
+            if insertedText in [';', '=', '}']:
                 code = document.get_text(document.get_start_iter(), document.get_end_iter(), True)
                 analyzer = PhpFileAnalyzer(code, self, self.get_index_storage())
                 tokens = analyzer.get_tokens()
                 tokenIndex = analyzer.get_token_index_by_position(textIter.get_line()+1, textIter.get_line_offset()+1)
 
-                declarationType, declaredName, className = analyzer.get_declaration_by_token_index(tokenIndex)
+                if insertedText == ';':
+                    # finished writing a statement?
+                    declarationType, declaredName, className = analyzer.get_declaration_by_token_index(tokenIndex)
 
-                if declarationType == 'member' and tokens[tokenIndex][1] == declaredName:
-                    # finished a member, we can auto-add a doc-comment for that
-                    line = tokens[tokenIndex][2]
-                    lineBeginIter = document.get_iter_at_line_index(line-1, 0)
+                    if declarationType == 'member' and tokens[tokenIndex][1] == declaredName:
+                        # finished a member, add a doc-comment for that
+                        tokenIndexComment = analyzer.get_token_index_by_position(line+1, 0)
+                        if tokens[tokenIndexComment][0] not in [T_COMMENT, T_DOC_COMMENT]:
+                            commentCode  = indention + "/**\n"
+                            commentCode += indention + " * @var mixed\n"
+                            commentCode += indention + " */\n"
+                            GLib.idle_add(self.do_textbuffer_insert, document, line, 0, commentCode)
 
-                    tokenIndexComment = analyzer.get_token_index_by_position(line, 0)
-                    if tokens[tokenIndexComment][0] not in [T_COMMENT, T_DOC_COMMENT]:
-                        codeLine = document.get_text(
-                            lineBeginIter,
-                            document.get_iter_at_line_index(line, 0),
-                            True
-                        )
+                if insertedText == '=':
+                    # writing a new variable?
+                    if tokens[tokenIndex][0] == T_VARIABLE and tokens[tokenIndex-1][1] in [';', '{']:
+                        methodBlock = analyzer.get_method_block_is_in(tokenIndex)
+                        if methodBlock != None:
+                            variableName = tokens[tokenIndex][1]
 
-                        indention = ""
-                        while codeLine[len(indention)] in [" ", "\t", "*"]:
-                            indention += codeLine[len(indention)]
+                            isFirstUsage = True
+                            for token in tokens[methodBlock[0]:tokenIndex]:
+                                if token[0] == T_VARIABLE and token[1] == variableName:
+                                    isFirstUsage = False
+                                    break
 
-                        commentCode  = indention + "/**\n"
-                        commentCode += indention + " * @var mixed\n"
-                        commentCode += indention + " */\n"
-                        GLib.idle_add(self.do_textbuffer_insert, document, line-1, 0, commentCode)
+                            if isFirstUsage:
+                                # added a new variable, add a doc-comment for that
+                                commentCode = indention + "/* @var " + variableName + " mixed */\n"
+                                GLib.idle_add(self.do_textbuffer_insert, document, line, 0, commentCode)
 
-            # adding an equal sign could mean the user is writing a new variable. maybe we can add a doc-comment.
-            if insertedText == '=':
-                code = document.get_text(document.get_start_iter(), document.get_end_iter(), True)
-                analyzer = PhpFileAnalyzer(code, self, self.get_index_storage())
-                tokens = analyzer.get_tokens()
-                tokenIndex = analyzer.get_token_index_by_position(textIter.get_line()+1, textIter.get_line_offset()+1)
-
-                if tokens[tokenIndex][0] == T_VARIABLE and tokens[tokenIndex-1][1] in [';', '{']:
-                    methodBlock = analyzer.get_method_block_is_in(tokenIndex)
-                    if methodBlock != None:
-                        variableName = tokens[tokenIndex][1]
-
-                        isFirstUsage = True
-                        for token in tokens[methodBlock[0]:tokenIndex]:
-                            if token[0] == T_VARIABLE and token[1] == variableName:
-                                isFirstUsage = False
-                                break
-
-                        if isFirstUsage:
-                            # added a new variable, we can auto-add a doc-comment for that
-                            line = tokens[tokenIndex][2]
-                            lineBeginIter = document.get_iter_at_line_index(line-1, 0)
-
-                            codeLine = document.get_text(
-                                lineBeginIter,
-                                document.get_iter_at_line_index(line, 0),
-                                True
-                            )
-
-                            indention = ""
-                            while codeLine[len(indention)] in [" ", "\t", "*"]:
-                                indention += codeLine[len(indention)]
-
-                            commentCode = indention + "/* @var " + variableName + " mixed */\n"
-                            GLib.idle_add(self.do_textbuffer_insert, document, line-1, 0, commentCode)
-
-            # finished writing a method or function?
-            if insertedText in [';', '}']:
-                pass # TODO
+                if insertedText in [';', '}']:
+                    # finished writing a method, class or function?
+                    # print(code)
+                    # TODO
+                    pass
 
             if insertedText == '\n':
                 # new line, add indention
-                line = textIter.get_line()
-                lineBeginIter = document.get_iter_at_line_index(line, 0)
-
-                codeLine = document.get_text(
-                    lineBeginIter,
-                    document.get_iter_at_line_index(line+1, 0),
-                    True
-                )
-
-                indention = ""
-                while codeLine[len(indention)] in [" ", "\t", "*"]:
-                    indention += codeLine[len(indention)]
-
                 GLib.idle_add(self.do_textbuffer_insert, document, line+1, 0, indention)
 
     def __on_document_changed(self, document, userData=None):

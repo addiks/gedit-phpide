@@ -142,25 +142,25 @@ def token_num(needleTokenId):
     return result
 
 keywords = [
-    'abstract', 'array', 'as', 'break', 'case', 
+    'abstract', 'array', 'as', 'break', 'case',
     'catch', 'class', 'clone', 'const', 'continue',
     'declare', 'default', 'do', 'echo', 'else',
-    'elseif', 'empty', 'enddeclare', 'endfor', 
+    'elseif', 'empty', 'enddeclare', 'endfor',
     'endforeach', 'endif', 'endswitch', 'endwhile',
     'eval', 'extends', 'final', 'for', 'foreach', 'function',
     'global', 'goto', 'if', 'implements', 'include',
     'include_once', 'instanceof', 'interface', 'isset',
     'isset', 'list', 'and', 'or', 'xor', 'new',
-    'print', 'private', 'public', 'protected', 
+    'print', 'private', 'public', 'protected',
     'require', 'require_once', 'return', 'static',
     'switch', 'throw', 'try', 'unset', 'use', 'var',
     'while'
 ]
 
 specialChars = [
-    '<', '>', '+', '-', '*', '/', '%', 
+    '<', '>', '+', '-', '*', '/', '%',
     '(', ')', '[', ']', '{', '}',
-    ',', '.', ';', ':', '?', 
+    ',', '.', ';', ':', '?',
     '^', '~', '&', '|', '#',
     '=', '!', '@', '$'
 ]
@@ -342,7 +342,7 @@ def token_get_all(code, filePath=None):
             elif code[0] in string.digits:
                 tokenText = code[0]
                 index = 1
-                while code[index] in string.digits + '.':
+                while len(code) > index and code[index] in string.digits + '.':
                     tokenText += code[index]
                     index += 1
                 code, tokens, row, col = process_token(code, tokens, T_DNUMBER, tokenText, row, col)
@@ -408,5 +408,3 @@ def process_token(code, tokens, tokenNum, tokenText, row, col):
         col += len(tokenText)
 
     return [code, tokens, row, col]
-
-

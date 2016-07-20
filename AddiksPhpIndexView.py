@@ -79,7 +79,7 @@ class AddiksPhpIndexView(GObject.Object, Gedit.ViewActivatable):
             codeLine = document.get_text(lineBeginIter, document.get_iter_at_line_index(line+1, 0), True)
 
             indention = ""
-            while codeLine[len(indention)] in [" ", "\t", "*"]:
+            while len(codeLine) > len(indention) and codeLine[len(indention)] in [" ", "\t", "*"]:
                 indention += codeLine[len(indention)]
 
             if insertedText in [';', '=', '}']:
@@ -88,7 +88,7 @@ class AddiksPhpIndexView(GObject.Object, Gedit.ViewActivatable):
                 tokens = analyzer.get_tokens()
                 tokenIndex = analyzer.get_token_index_by_position(textIter.get_line()+1, textIter.get_line_offset()+1)
 
-                if insertedText == ';':
+                if insertedText == ';' and tokenIndex != None:
                     # finished writing a statement?
                     declarationType, declaredName, className = analyzer.get_declaration_by_token_index(tokenIndex)
 
@@ -101,7 +101,7 @@ class AddiksPhpIndexView(GObject.Object, Gedit.ViewActivatable):
                             commentCode += indention + " */\n"
                             GLib.idle_add(self.do_textbuffer_insert, document, line, 0, commentCode)
 
-                if insertedText == '=':
+                if insertedText == '=' and tokenIndex != None:
                     # writing a new variable?
                     if tokens[tokenIndex][0] == T_VARIABLE and tokens[tokenIndex-1][1] in [';', '{']:
                         methodBlock = analyzer.get_method_block_is_in(tokenIndex)
@@ -148,9 +148,10 @@ class AddiksPhpIndexView(GObject.Object, Gedit.ViewActivatable):
         if document.get_location() != None:
             filepath = document.get_location().get_path()
             indexFilepath = self.get_index_filepath()
-            indexPathManager = self.get_index_path_manager()
-            index = PhpIndex(indexFilepath, indexPathManager=indexPathManager)
-            index.reindex_phpfile(filepath)
+            if indexFilepath != None:
+                indexPathManager = self.get_index_path_manager()
+                index = PhpIndex(indexFilepath, indexPathManager=indexPathManager)
+                index.reindex_phpfile(filepath)
 
     ### MENU ITEMS
 

@@ -35,7 +35,7 @@ class PhpIndex:
 
     def __init__(self, index_path, update_callback=None, error_callback=None, finished_callback=None, indexPathManager=None):
         if index_path == None:
-            raise Exception("Cannot open index '"+indexPath+"'!")
+            raise Exception("Cannot open index '"+index_path+"'!")
         self._parsers = {}
         self._index_path_manager = indexPathManager
         self._index_path = index_path
@@ -394,5 +394,3 @@ class PhpIndex:
 
             elif useType == 'constant':
                 self._storage.add_constant_use(usedName, filePath, line, column, className, containingName)
-
-

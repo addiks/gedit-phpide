@@ -519,7 +519,7 @@ class AddiksPhpIndexView(GObject.Object, Gedit.ViewActivatable):
             filepath = os.path.abspath(filepath)
             while filepath != "/":
                 filepath = os.path.dirname(filepath)
-                if os.path.exists(filepath + "/.git"):
+                if os.path.isdir(filepath + "/.git"):
                     return filepath
         else:
             return None

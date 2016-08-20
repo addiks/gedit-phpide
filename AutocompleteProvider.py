@@ -76,7 +76,7 @@ class AutocompleteProvider(GObject.Object, GtkSource.CompletionProvider):
                     for argumentRow in arguments:
                         if len(argumentRow) > 2:
                             argumentType, argumentsCode, argumentDefaultValue = argumentRow
-                        else:
+                        elif len(argumentRow) == 2:
                             argumentDefaultValue = None
                             argumentType, argumentsCode = argumentRow
                         argumentsCodes.append(argumentsCode)
@@ -177,7 +177,9 @@ class AutocompleteProvider(GObject.Object, GtkSource.CompletionProvider):
         if not self.mark:
             return False
         if textIter == None:
-            hasIter, textIter = context.get_iter()
+            textIter = context.get_iter()
+            if type(textIter) is not Gtk.TextIter:
+                hasIter, textIter = textIter
         textBuffer = self.mark.get_buffer()
         textIter.assign(textBuffer.get_iter_at_mark(self.mark))
         return True
@@ -193,7 +195,9 @@ class AutocompleteProvider(GObject.Object, GtkSource.CompletionProvider):
         fileIndex = self.__pluginView.get_php_fileindex()
         proposals = []
 
-        hasIter, textIter = context.get_iter()
+        textIter = context.get_iter()
+        if type(textIter) is not Gtk.TextIter:
+            hasIter, textIter = textIter
         line   = textIter.get_line()+1
         column = textIter.get_line_index()+1
 
@@ -309,4 +313,3 @@ class AutocompleteProvider(GObject.Object, GtkSource.CompletionProvider):
         length = len(name)
         length = str(length).zfill(4)
         return length + name
-

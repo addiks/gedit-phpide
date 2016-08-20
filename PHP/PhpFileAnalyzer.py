@@ -176,7 +176,7 @@ class PhpFileAnalyzer:
                     declaration = ['constant', tokens[tokenIndex][1], None]
 
             elif tokens[tokenIndex][1] == ')':
-                declaration = self.get_type_by_token_index(tokenIndex-1)
+                className = self.get_type_by_token_index(tokenIndex-1)
 
             elif tokens[tokenIndex][0] == T_VARIABLE:
                 if tokens[tokenIndex-1][1] in ['public', 'protected', 'private']:
@@ -484,4 +484,3 @@ class PhpFileAnalyzer:
                 annotations[key].append(value)
 
         return annotations
-

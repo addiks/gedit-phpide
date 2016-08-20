@@ -35,7 +35,7 @@ class PhpIndex:
 
     def __init__(self, index_path, update_callback=None, error_callback=None, finished_callback=None, indexPathManager=None):
         if index_path == None:
-            raise Exception("Cannot open index '"+index_path+"'!")
+            raise Exception("Cannot open index from empty file-path!")
         self._parsers = {}
         self._index_path_manager = indexPathManager
         self._index_path = index_path

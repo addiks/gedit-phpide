@@ -321,7 +321,7 @@ def token_get_all(code, filePath=None):
             elif code[0] in '_\\' + string.ascii_letters:
                 tokenText = code[0]
                 index = 1
-                while code[index] in '_\\' + string.ascii_letters + string.digits:
+                while len(code) > index and code[index] in '_\\' + string.ascii_letters + string.digits:
                     tokenText += code[index]
                     index += 1
                 code, tokens, row, col = process_token(code, tokens, T_STRING, tokenText, row, col)

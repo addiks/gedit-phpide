@@ -140,34 +140,41 @@ class PhpIndex:
         storage = self._storage
         csvFilePath = os.path.dirname(__file__)+"/php.internals.csv"
         reader = csv.reader(open(csvFilePath, "r"), delimiter=",")
-        for typeName, name, value in reader:
+        for row in reader:
+            typeName = row[0]
             docComment = ""
             namespace = "\\"
 
             if typeName == 'function':
+                typeName, name = row
                 storage.add_function("INTERNAL", namespace, name, docComment, 0, 0, [])
 
             elif typeName in ['class', 'interface', 'trait']:
-                className = name
-                classType = typeName
-                parentName = None
-                interfaces = []
-                isFinal = False
-                isAbstract = False
+                if len(row) == 3:
+                    print(repr(row))
+                typeName, className, classType, parentName, interfaces, isFinal, isAbstract, docComment = row
+                interfaces = interfaces.split(",")
+                isFinal = (isFinal == "true")
+                isAbstract = (isAbstract == "true")
                 storage.add_class("INTERNAL", namespace, className, classType, parentName, interfaces, isFinal, isAbstract, docComment, 0, 0)
 
             elif typeName == 'member':
-                #storage.add_member("INTERNAL", namespace, className, memberName, 0, 0, isStatic, visibility, docComment)
+                typeName, memberName, className, isStatic, visibility, docComment = row
+                storage.add_member("INTERNAL", namespace, className, memberName, 0, 0, isStatic, visibility, docComment)
                 pass
 
             elif typeName == 'method':
-                #storage.add_method("INTERNAL", namespace, className, methodName, isStatic, visibility, docComment, 0, 0, [])
+                typeName, methodName, className, isStatic, visibility, parameters, docComment = row
+                parameters = parameters.split(",")
+                isStatic = (isStatic == "true")
+                storage.add_method("INTERNAL", namespace, className, methodName, isStatic, visibility, docComment, 0, 0, parameters)
                 pass
 
             elif typeName == 'variable':
                 pass
 
             elif typeName == 'constant':
+                typeName, name, value = row
                 storage.add_constant("INTERNAL", name, 0, 0)
 
     def _remove_deleted(self, directory):

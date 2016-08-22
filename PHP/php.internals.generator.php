@@ -15,28 +15,132 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+$definedVars = get_defined_vars();
+
 $writeHandle = fopen("php.internals.csv", "w");
 
 foreach(get_defined_functions()["internal"] as $name){
-    fputcsv($writeHandle, ['function', $name, null]);
+    fputcsv($writeHandle, ['function', $name]);
 }
 
-foreach(get_declared_classes() as $name){
-    fputcsv($writeHandle, ['class', $name, null]);
-}
+foreach(get_declared_classes() as $className){
+    $reflectionClass = new ReflectionClass($className);
 
-foreach(get_declared_interfaces() as $name){
-    fputcsv($writeHandle, ['interface', $name, null]);
-}
+    $classType = "class";
 
-foreach(get_defined_vars() as $name => $value){
-    if(!in_array($name, array('writeHandle', 'name', 'value', 'group', 'groupKey'))){
-        fputcsv($writeHandle, ['variable', $name, null]);
+    if ($reflectionClass->isInterface()) {
+        $classType = "interface";
+
+    } elseif ($reflectionClass->isTrait()) {
+        $classType = "trait";
+    }
+
+    /* @var $reflectionParentClass ReflectionClass */
+    $reflectionParentClass = $reflectionClass->getParentClass();
+
+    $parentClassName = "";
+    if ($reflectionParentClass instanceof ReflectionClass) {
+        $parentClassName = $reflectionParentClass->getName();
+    }
+
+    $interfaces = implode(",", $reflectionClass->getInterfaceNames());
+
+    $isFinal = $reflectionClass->isFinal();
+    $isFinal = ($isFinal ?'true' :'false');
+
+    $isAbstract = $reflectionClass->isAbstract();
+    $isAbstract = ($isAbstract ?'true' :'false');
+
+    $docComment = $reflectionClass->getDocComment();
+
+    fputcsv($writeHandle, [
+        'class',
+        $className,
+        $classType,
+        $parentClassName,
+        $interfaces,
+        $isFinal,
+        $isAbstract,
+        $docComment
+    ]);
+
+    foreach ($reflectionClass->getMethods() as $reflectionMethod) {
+        /* @var $reflectionMethod ReflectionMethod */
+
+        $methodName = $reflectionMethod->getName();
+
+        $isStatic = $reflectionMethod->isStatic();
+        $isStatic = ($isStatic ?'true' :'false');
+
+        $visibility = "public";
+        if ($reflectionMethod->isProtected()) {
+            $visibility = "protected";
+
+        } elseif ($reflectionMethod->isPrivate()) {
+            $visibility = "private";
+        }
+
+        $docComment = "";
+
+        $parameters = array();
+        foreach ($reflectionMethod->getParameters() as $reflectionParameter) {
+            /* @var $reflectionParameter ReflectionParameter */
+
+            $parameterName = $reflectionParameter->getName();
+
+            $parameters[] = $parameterName;
+        }
+        $parameters = implode(",", $parameters);
+
+        fputcsv($writeHandle, [
+            'method',
+            $methodName,
+            $className,
+            $isStatic,
+            $visibility,
+            $parameters,
+            $docComment
+        ]);
+    }
+
+    foreach ($reflectionClass->getProperties() as $reflectionProperty) {
+        /* @var $reflectionProperty ReflectionProperty */
+
+        $memberName = $reflectionProperty->getName();
+
+        $isStatic = $reflectionProperty->isStatic();
+        $isStatic = ($isStatic ?'true' :'false');
+
+        $visibility = "public";
+        if ($reflectionProperty->isProtected()) {
+            $visibility = "protected";
+
+        } elseif ($reflectionProperty->isPrivate()) {
+            $visibility = "private";
+        }
+
+        $docComment = "";
+
+        fputcsv($writeHandle, [
+            'member',
+            $memberName,
+            $className,
+            $isStatic,
+            $visibility,
+            $docComment
+        ]);
     }
 }
 
-foreach(get_defined_constants() as $name => $value){
+#foreach(get_declared_interfaces() as $name){
+#    fputcsv($writeHandle, ['interface', $name, null]);
+#}
 
+foreach($definedVars as $name => $value){
+    fputcsv($writeHandle, ['variable', $name, null]);
+}
+
+foreach(get_defined_constants() as $name => $value){
     fputcsv($writeHandle, ['constant', $name, $value]);
 }
 

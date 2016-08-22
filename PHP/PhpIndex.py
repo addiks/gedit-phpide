@@ -150,8 +150,6 @@ class PhpIndex:
                 storage.add_function("INTERNAL", namespace, name, docComment, 0, 0, [])
 
             elif typeName in ['class', 'interface', 'trait']:
-                if len(row) == 3:
-                    print(repr(row))
                 typeName, className, classType, parentName, interfaces, isFinal, isAbstract, docComment = row
                 interfaces = interfaces.split(",")
                 isFinal = (isFinal == "true")

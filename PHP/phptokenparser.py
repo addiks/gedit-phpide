@@ -87,7 +87,8 @@ def __find_blocks_classes_functions(tokens):
                 use_statement_index = tokenIndex+2;
 
         if token[1] in ['class', 'interface', 'trait']:
-            classes.append(tokenIndex)
+            if tokens[tokenIndex-1][1] != '::':
+                classes.append(tokenIndex)
 
         if token[1] == 'function':
             functions.append(tokenIndex)
@@ -366,6 +367,3 @@ def __parse_arguments(tokens, tokenIndex):
             if tokens[tokenIndex][1] != ',':
                 break
     return arguments
-
-
-

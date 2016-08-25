@@ -74,12 +74,13 @@ class AddiksPhpIndexView(GObject.Object, Gedit.ViewActivatable):
         if document.get_location() != None and insertedText in ['\n', ';', '=', '}']:
 
             line = textIter.get_line()
+            column = textIter.get_line_offset()
             lineBeginIter = document.get_iter_at_line_index(line, 0)
 
             codeLine = document.get_text(lineBeginIter, document.get_iter_at_line_index(line+1, 0), True)
 
             indention = ""
-            while len(codeLine) > len(indention) and codeLine[len(indention)] in [" ", "\t", "*"]:
+            while len(codeLine) > len(indention) and column > len(indention) and codeLine[len(indention)] in [" ", "\t", "*"]:
                 indention += codeLine[len(indention)]
 
             if insertedText in [';', '=', '}']:

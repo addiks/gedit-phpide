@@ -87,12 +87,13 @@ class AddiksPhpIndexView(GObject.Object, Gedit.ViewActivatable):
                 analyzer = PhpFileAnalyzer(code, self, self.get_index_storage())
                 tokens = analyzer.get_tokens()
                 tokenIndex = analyzer.get_token_index_by_position(textIter.get_line()+1, textIter.get_line_offset()+1)
+                isInMethod = analyzer.is_in_method(tokenIndex)
 
                 if insertedText == ';' and tokenIndex != None:
                     # finished writing a statement?
                     declarationType, declaredName, className = analyzer.get_declaration_by_token_index(tokenIndex)
 
-                    if declarationType == 'member' and tokens[tokenIndex][1] == declaredName:
+                    if declarationType == 'member' and tokens[tokenIndex][1] == declaredName and not isInMethod:
                         # finished a member, add a doc-comment for that
                         tokenIndexComment = analyzer.get_token_index_by_position(line+1, 0)
                         if tokens[tokenIndexComment][0] not in [T_COMMENT, T_DOC_COMMENT]:

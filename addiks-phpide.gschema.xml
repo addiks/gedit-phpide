@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
+  <schema id="de.addiks.gedit.phpide" path="/de/addiks/gedit/phpide/">
+      <key type="s" name="graphml-execute-pattern">
+          <default>'/bin/bash ~/Downloads/yEd/yEd %s'</default>
+          <summary>Execution pattern for graphml-exports</summary>
+          <description>Execution pattern for graphml-exports</description>
+      </key>
+  </schema>
+</schemalist>

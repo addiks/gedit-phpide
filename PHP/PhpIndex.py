@@ -17,6 +17,7 @@
 from PHP.phplexer import token_get_all
 from PHP.phplexer import token_name
 from PHP.phplexer import token_num
+from PHP.functions import get_annotations_by_doccomment
 from PHP.phptokenparser import parse_php_tokens
 import sys
 import os
@@ -291,10 +292,14 @@ class PhpIndex:
                         else:
                             parentName = "\\" + parentName
 
+                    cleanedInterfaces = []
                     for interface in interfaces:
                         if interface in use_statements:
-                            interfaces.remove(interface)
-                            interfaces.append(use_statements[interface])
+                            interface = use_statements[interface]
+                        if interface[0] != '\\':
+                            interface = "\\" + namespace + "\\" + interface
+                        cleanedInterfaces.append(interface)
+                    interfaces = cleanedInterfaces
 
                     self._storage.add_class(filePath, namespace, className, classType, parentName, interfaces, isFinal, isAbstract, docComment, line, column)
 
@@ -327,7 +332,28 @@ class PhpIndex:
                         if tokens[memberKeywordIndex][0] in [T_DOC_COMMENT, T_COMMENT]:
                             memberDocComment = tokens[memberKeywordIndex][1]
 
-                        self._storage.add_member(filePath, namespace, className, memberName, memberLine, memberColumn, isStatic, visibility, memberDocComment)
+                        # try to find declaration in comments ( // @var $foo \Bar)
+                        typeHint = None
+                        annotations = get_annotations_by_doccomment(memberDocComment)
+                        if "var" in annotations:
+                            for annotation in annotations['var']:
+                                if len(annotation) == 1:
+                                    typeHint = annotation[0]
+                                if len(annotation) == 2:
+                                    variable, varTypeId = annotation
+                                    if varTypeId[0] == '$':
+                                        tempVar   = variable
+                                        variable  = varTypeId
+                                        varTypeId = tempVar
+                                    if variable == "$" + memberName:
+                                        typeHint = varTypeId
+                        if typeHint != None and len(typeHint) > 0:
+                            if typeHint in use_statements:
+                                typeHint = use_statements[typeHint]
+                            if typeHint[0] != '\\':
+                                typeHint = "\\" + namespace + "\\" + typeHint
+
+                        self._storage.add_member(filePath, namespace, className, memberName, memberLine, memberColumn, isStatic, visibility, memberDocComment, typeHint)
 
                     self.__index_uses(filePath, className, "", uses, namespace, use_statements)
 

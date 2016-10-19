@@ -14,7 +14,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from PHP.get_namespace_by_classname import get_namespace_by_classname
+from PHP.functions import get_namespace_by_classname
 from AutocompleteProposal import AutocompleteProposal
 from PHP.phplexer import token_name, token_num
 from gi.repository import Gtk, GtkSource, GObject

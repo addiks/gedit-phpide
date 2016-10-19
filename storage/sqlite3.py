@@ -38,7 +38,7 @@ class Sqlite3Storage:
         cursor = self._cursor
         cursor.execute(
             "CREATE TABLE IF NOT EXISTS files("
-                "file_path VARCHAR(256) PRIMARY KEY, "
+                "file_path VARCHAR(512) PRIMARY KEY, "
                 "namespace VARCHAR(256) NOT NULL DEFAULT '\\', "
                 "mtime     INTEGER, "
                 "hash      VARCHAR(128) "
@@ -47,7 +47,7 @@ class Sqlite3Storage:
         cursor.execute(
             "CREATE TABLE IF NOT EXISTS classes("
                 "id          INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
-                "file_path   VARCHAR(256) NOT NULL, "
+                "file_path   VARCHAR(512) NOT NULL, "
                 "namespace   VARCHAR(256) NOT NULL DEFAULT '\\', "
                 "name        VARCHAR(128) NOT NULL, "
                 "type        VARCHAR(32)  NOT NULL, "
@@ -72,7 +72,7 @@ class Sqlite3Storage:
         cursor.execute(
             "CREATE TABLE IF NOT EXISTS classes_constants("
                 "id          INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
-                "file_path   VARCHAR(256) NOT NULL, "
+                "file_path   VARCHAR(512) NOT NULL, "
                 "class_id    INTEGER NOT NULL, "
                 "name        VARCHAR(128), "
                 "value       VARCHAR(2048), "
@@ -89,7 +89,7 @@ class Sqlite3Storage:
                 "is_static   TINYINT, "
                 "visibility  VARCHAR(32), "
                 "doccomment  SMALLTEXT, "
-                "file_path   VARCHAR(256) NOT NULL, "
+                "file_path   VARCHAR(512) NOT NULL, "
                 "line        INTEGER, "
                 "column      SMALLINT, "
                 "arguments   SMALLTEXT "
@@ -103,7 +103,8 @@ class Sqlite3Storage:
                 "is_static   TINYINT, "
                 "visibility  VARCHAR(32), "
                 "doccomment  SMALLTEXT, "
-                "file_path   VARCHAR(256) NOT NULL, "
+                "type_hint   VARCHAR(512), "
+                "file_path   VARCHAR(512) NOT NULL, "
                 "line        INTEGER, "
                 "column      SMALLINT"
             ")"
@@ -111,7 +112,7 @@ class Sqlite3Storage:
         cursor.execute(
             "CREATE TABLE IF NOT EXISTS functions("
                 "id          INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
-                "file_path   VARCHAR(256) NOT NULL, "
+                "file_path   VARCHAR(512) NOT NULL, "
                 "namespace   VARCHAR(256) NOT NULL DEFAULT '\\', "
                 "name        VARCHAR(128), "
                 "doccomment  SMALLTEXT, "
@@ -122,17 +123,17 @@ class Sqlite3Storage:
         );
         cursor.execute(
             "CREATE TABLE IF NOT EXISTS constants("
-                "id          INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
-                "file_path   VARCHAR(256) NOT NULL, "
-                "name        VARCHAR(128), "
-                "line        INTEGER, "
-                "column      SMALLINT"
+                "id           INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
+                "file_path    VARCHAR(512) NOT NULL, "
+                "name         VARCHAR(128), "
+                "line         INTEGER, "
+                "column       SMALLINT"
             ")"
         );
         cursor.execute(
             "CREATE TABLE IF NOT EXISTS classes_method_uses("
                 "id           INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
-                "file_path    VARCHAR(256) NOT NULL, "
+                "file_path    VARCHAR(512) NOT NULL, "
                 "name         VARCHAR(128), "
                 "line         INTEGER, "
                 "column       SMALLINT, "
@@ -143,7 +144,7 @@ class Sqlite3Storage:
         cursor.execute(
             "CREATE TABLE IF NOT EXISTS classes_member_uses("
                 "id           INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
-                "file_path    VARCHAR(256) NOT NULL, "
+                "file_path    VARCHAR(512) NOT NULL, "
                 "name         VARCHAR(128), "
                 "line         INTEGER, "
                 "column       SMALLINT, "
@@ -154,7 +155,7 @@ class Sqlite3Storage:
         cursor.execute(
             "CREATE TABLE IF NOT EXISTS function_uses("
                 "id           INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
-                "file_path    VARCHAR(256) NOT NULL, "
+                "file_path    VARCHAR(512) NOT NULL, "
                 "name         VARCHAR(128), "
                 "line         INTEGER, "
                 "column       SMALLINT, "
@@ -164,10 +165,10 @@ class Sqlite3Storage:
         );
         cursor.execute(
             "CREATE TABLE IF NOT EXISTS classes_uses("
-                "id          INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
-                "file_path   VARCHAR(256) NOT NULL, "
-                "name        VARCHAR(128), "
-                "line        INTEGER, "
+                "id           INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
+                "file_path    VARCHAR(512) NOT NULL, "
+                "name         VARCHAR(128), "
+                "line         INTEGER, "
                 "column       SMALLINT, "
                 "className    VARCHAR(128), "
                 "functionName VARCHAR(128)"
@@ -176,7 +177,7 @@ class Sqlite3Storage:
         cursor.execute(
             "CREATE TABLE IF NOT EXISTS constant_uses("
                 "id           INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
-                "file_path    VARCHAR(256) NOT NULL, "
+                "file_path    VARCHAR(512) NOT NULL, "
                 "name         VARCHAR(128), "
                 "line         INTEGER, "
                 "column       SMALLINT, "
@@ -243,6 +244,16 @@ class Sqlite3Storage:
             )
             self.__commitAfterXInserts()
         self.__commitAfterXInserts()
+
+    def get_class_type(self, namespace, className):
+        cursor = self._cursor
+        resultClassType = "class"
+        if namespace[0] == '\\':
+            namespace = namespace[1:]
+        result = cursor.execute("SELECT name, type FROM classes WHERE namespace = ? AND name = ? LIMIT 1", (namespace, className))
+        for className, classType in result:
+            resultClassType = classType
+        return resultClassType
 
     def get_class_position(self, namespace, className):
         cursor = self._cursor
@@ -321,6 +332,20 @@ class Sqlite3Storage:
                 children.append(namespace + name)
         return children
 
+    def get_class_interfaces(self, namespace, className):
+        cursor = self._cursor
+        interfaces = []
+        classId, filePath = self.get_class_id(namespace, className)
+        result = cursor.execute(
+            "SELECT i.id, i.name "
+            "FROM classes_interfaces_uses i "
+            "WHERE i.class_id=?",
+            (classId, )
+        )
+        for rowId, interfaceName in result:
+            interfaces.append(interfaceName)
+        return interfaces
+
     def get_all_classnames(self, withNamespaces=True):
         cursor = self._cursor
         classNames = []
@@ -374,6 +399,22 @@ class Sqlite3Storage:
         uses = []
         for file_path, line, column, className, functionName in result:
             uses.append([file_path, line, column, className, functionName])
+        return uses
+
+    def get_class_uses_by_class(self, className):
+        cursor = self._cursor
+        while len(className)>0 and className[0] == '\\':
+            className = className[1:]
+        result = cursor.execute(
+            "SELECT file_path, line, column, name, functionName "
+            "FROM classes_uses "
+            "WHERE className = ? "
+            "ORDER BY className, line, functionName DESC",
+            (className, )
+        )
+        uses = []
+        for file_path, line, column, name, functionName in result:
+            uses.append([file_path, line, column, name, functionName])
         return uses
 
     ### CLASS-CONSTANT ###
@@ -458,6 +499,22 @@ class Sqlite3Storage:
             "FROM classes_methods "
             "WHERE class_id=? and visibility=? and is_static=0",
             (classId, visibility, )
+        )
+        methodNames = []
+        for name, in result:
+            methodNames.append(name)
+        return methodNames
+
+    def get_all_class_methods(self, namespace, className):
+        cursor = self._cursor
+        while len(namespace)>0 and namespace[0] == '\\':
+            namespace = namespace[1:]
+        classId, filePath = self.get_class_id(namespace, className)
+        result = cursor.execute(
+            "SELECT name "
+            "FROM classes_methods "
+            "WHERE class_id=? and is_static=0",
+            (classId, )
         )
         methodNames = []
         for name, in result:
@@ -568,30 +625,30 @@ class Sqlite3Storage:
 
     ### MEMBERS ###
 
-    def add_member(self, filePath, namespace, className, memberName, line, column, isStatic, visibility, docComment):
+    def add_member(self, filePath, namespace, className, memberName, line, column, isStatic, visibility, docComment, typeHint=None):
         cursor = self._cursor
         classId, filePath = self.get_class_id(namespace, className)
         cursor.execute(
-            "INSERT INTO classes_members (file_path, class_id, name, is_static, visibility, doccomment, line, column) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-            (filePath, classId, memberName, isStatic, visibility, docComment, line, column )
+            "INSERT INTO classes_members (file_path, class_id, name, is_static, visibility, doccomment, line, column, type_hint) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            (filePath, classId, memberName, isStatic, visibility, docComment, line, column, typeHint )
         )
         self.__commitAfterXInserts()
 
     def get_member(self, namespace, className, memberName):
         cursor = self._cursor
-        visibility, is_static, line, column, doccomment = (None, None, None, None, None, )
+        visibility, is_static, line, column, doccomment, typeHint = (None, None, None, None, None, None)
         classId, filePath = self.get_class_id(namespace, className)
         cursor.execute(
-            "SELECT visibility, is_static, line, column, doccomment "
+            "SELECT visibility, is_static, line, column, doccomment, type_hint "
             "FROM classes_members "
             "WHERE class_id=? and name=?",
             (classId, memberName, )
         )
         row = cursor.fetchone()
         if row != None:
-            visibility, is_static, line, column, doccomment = row
-        return (visibility, is_static, filePath, line, column, doccomment, )
+            visibility, is_static, line, column, doccomment, typeHint = row
+        return (visibility, is_static, filePath, line, column, doccomment, typeHint)
 
     def get_class_members(self, namespace, className, visibility="public"):
         cursor = self._cursor
@@ -601,6 +658,20 @@ class Sqlite3Storage:
             "FROM classes_members "
             "WHERE class_id=? and visibility=? and is_static=0",
             (classId, visibility, )
+        )
+        classMembers = []
+        for name, in result:
+            classMembers.append(name)
+        return classMembers
+
+    def get_all_class_members(self, namespace, className):
+        cursor = self._cursor
+        classId, filePath = self.get_class_id(namespace, className)
+        result = cursor.execute(
+            "SELECT name "
+            "FROM classes_members "
+            "WHERE class_id=? and is_static=0",
+            (classId, )
         )
         classMembers = []
         for name, in result:
@@ -672,6 +743,21 @@ class Sqlite3Storage:
         for file_path, line, column, className, functionName in result:
             uses.append([file_path, line, column, className, functionName])
         return uses
+
+    def get_members_by_type_hint(self, namespace, className):
+        cursor = self._cursor
+        typeHint = namespace + "\\" + className
+        members = []
+        result = cursor.execute(
+            "SELECT c.namespace, c.name, cm.name "
+            "FROM classes_members cm "
+            "LEFT JOIN classes c ON(cm.class_id = c.id)"
+            "WHERE cm.type_hint = ?",
+            (typeHint, )
+        )
+        for namespace, className, memberName in result:
+            members.append([namespace, className, memberName])
+        return members
 
     ### FUNCTIONS ###
 
@@ -940,14 +1026,19 @@ class Sqlite3Storage:
     def empty(self):
         cursor = self._cursor
         cursor.execute("DROP TABLE IF EXISTS classes_members")
+        cursor.execute("DROP TABLE IF EXISTS classes_member_uses")
         cursor.execute("DROP TABLE IF EXISTS classes_methods")
+        cursor.execute("DROP TABLE IF EXISTS classes_method_uses")
         cursor.execute("DROP TABLE IF EXISTS classes_interfaces_uses")
+        cursor.execute("DROP TABLE IF EXISTS classes_namespace_name")
         cursor.execute("DROP TABLE IF EXISTS classes_constants")
         cursor.execute("DROP TABLE IF EXISTS constants")
+        cursor.execute("DROP TABLE IF EXISTS constants_uses")
         cursor.execute("DROP TABLE IF EXISTS classes")
+        cursor.execute("DROP TABLE IF EXISTS classes_uses")
         cursor.execute("DROP TABLE IF EXISTS functions")
+        cursor.execute("DROP TABLE IF EXISTS function_uses")
         cursor.execute("DROP TABLE IF EXISTS files")
         cursor.execute("VACUUM")
         self.__create_tables()
         self._connection.commit()
-

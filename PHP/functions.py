@@ -14,6 +14,27 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import re
+
+docCommentRegex = re.compile("\\@([\\\\a-zA-Z_-]+)(([\$ \ta-zA-Z0-9\\\\_-]+)*)")
+whitespaceRegex = re.compile("\s+")
+
+def get_annotations_by_doccomment(docComment):
+    annotations = {}
+    for match in docCommentRegex.finditer(docComment):
+        key, value = match.groups()[0:2]
+
+        if key not in annotations:
+            annotations[key] = []
+
+        tags = whitespaceRegex.split(value.strip())
+        if len(tags)>0:
+            annotations[key].append(tags)
+        else:
+            annotations[key].append(value)
+
+    return annotations
+
 def get_namespace_by_classname(className):
     namespace = "\\"
     newClassName = className
@@ -26,4 +47,3 @@ def get_namespace_by_classname(className):
             namespace = "\\"
 
     return (namespace, newClassName)
-

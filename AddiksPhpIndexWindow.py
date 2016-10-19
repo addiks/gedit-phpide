@@ -107,6 +107,10 @@ class AddiksPhpIndexWindow(GObject.Object, Gedit.WindowActivatable):
             return self.on_index_not_build()
         print("Open depency-view")
 
+    def on_export_to_graphml(self, action, data=None):
+        pluginView = self.get_active_view()
+        pluginView.on_export_to_graphml(action, data)
+
     ### HELPERS
 
     def get_active_view(self):

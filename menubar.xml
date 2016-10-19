@@ -16,6 +16,7 @@
 
             <separator/>
             <menuitem name="ManageIndexPaths" action="ManageIndexPathsAction"/>
+            <menuitem name="ExportGraphML"    action="ExportGraphMLAction"/>
         </menu>
     </menubar>
 </ui>

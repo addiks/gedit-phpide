@@ -16,9 +16,14 @@
 
 from gi.repository import GLib, Gtk, Gdk
 from os.path import expanduser
-from PHP.get_namespace_by_classname import get_namespace_by_classname
+from PHP.functions import get_namespace_by_classname
+from PHP.GraphMLExporter import GraphMLExporter
 import traceback
 import re
+import os
+import subprocess
+from subprocess import Popen, PIPE
+from _thread import start_new_thread
 
 class AddiksPhpGladeHandler:
 
@@ -26,26 +31,33 @@ class AddiksPhpGladeHandler:
         self._plugin  = plugin
         self._builder = builder
 
-    ### SEARCH INDEX
-
-    def onIndexSearchChanged(self, searchEntry, userData=None):
-        searchText = searchEntry.get_text()
+    def __get_results_by_search_text(self, searchText):
         searchText = searchText.strip()
 
         searchTerms = re.split('\s+', searchText)
-
-        listStore = self._builder.get_object('liststoreSearchIndex')
-        listStore.clear()
 
         smallestLen = None
         for term in searchTerms:
             if smallestLen == None or len(term) < smallestLen:
                 smallestLen = len(term)
 
+        results = []
         if len(searchTerms)>0 and smallestLen>2:
             index = self._plugin.get_index_storage()
             results = index.do_fulltext_search(searchTerms)
 
+        return results
+
+    ### SEARCH INDEX
+
+    def onIndexSearchChanged(self, searchEntry, userData=None):
+        searchText = searchEntry.get_text()
+        results = self.__get_results_by_search_text(searchText)
+
+        listStore = self._builder.get_object('liststoreSearchIndex')
+        listStore.clear()
+
+        if len(results)>0:
             # TODO: update priorities by context
 
             results.sort(key=self._sortKeyForAutocomplete)
@@ -177,7 +189,6 @@ class AddiksPhpGladeHandler:
     ### CALLER WINDOW
 
     def onCallerRowActivated(self, treeView, treePath, treeViewColumn, userData=None):
-        window    = self._builder.get_object("windowCallers")
         listStore = self._builder.get_object('liststoreCallers')
 
         rowIter = listStore.get_iter(treePath)
@@ -187,4 +198,91 @@ class AddiksPhpGladeHandler:
 
         self._plugin.open_by_position(filePath, line, 1)
 
+    ### EXPORT TO GRAPH ML
 
+    def onExportGraphMLWindowShown(self, window, userData=None):
+        plugin = self._plugin
+        executionPatternEntry = self._builder.get_object('entryGraphMLExecutionPattern')
+
+        settings = plugin.get_settings()
+
+        commandPattern = settings.get_string("graphml-execute-pattern")
+
+        executionPatternEntry.set_text(commandPattern)
+
+    def onExportGraphMLAvailableChanged(self, searchEntry, userData=None):
+        searchText = searchEntry.get_text()
+        results = self.__get_results_by_search_text(searchText)
+
+        listStore = self._builder.get_object('liststoreExportGraphMLAvailable')
+        listStore.clear()
+
+        if len(results)>0:
+            # TODO: update priorities by context
+
+            results.sort(key=self._sortKeyForAutocomplete)
+
+            for filePath, line, column, typeName, title in results:
+                if typeName == 'Class':
+                    rowIter = listStore.append()
+                    listStore.set_value(rowIter, 0, title)
+
+    def onExportGraphMLAvailableRowActivated(self, treeView, treePath, treeViewColumn, userData=None):
+        listStoreAvailable = self._builder.get_object('liststoreExportGraphMLAvailable')
+        listStoreSelected  = self._builder.get_object('liststoreExportGraphMLSelected')
+
+        rowIterAvailable = listStoreAvailable.get_iter(treePath)
+
+        classname = listStoreAvailable.get_value(rowIterAvailable, 0)
+
+        rowIterSelected = listStoreSelected.append()
+        listStoreSelected.set_value(rowIterSelected, 0, classname)
+
+    def onExportGraphMLSelectedRowActivated(self, treeView, treePath, treeViewColumn, userData=None):
+        listStore = self._builder.get_object('liststoreExportGraphMLSelected')
+
+        rowIter = listStore.get_iter(treePath)
+        listStore.remove(rowIter)
+
+    def onExportGraphMLExecute(self, button, userData=None):
+        listStore = self._builder.get_object('liststoreExportGraphMLSelected')
+        depthAdjustment = self._builder.get_object('adjustmentExportGraphMLDepth')
+
+        depth = int(depthAdjustment.get_value())
+
+        counter = 0
+        while True:
+            filePath = "/tmp/addiks.phpide." + str(counter) + ".graphml"
+            if not os.path.exists(filePath):
+                break
+            counter += 1
+
+        classes = []
+        for modelRow in listStore:
+            rowIter = modelRow.iter
+            classes.append(listStore.get_value(rowIter, 0))
+
+        start_new_thread(self._do_ExportGraphMLExecute, (classes, filePath, depth))
+
+    def _do_ExportGraphMLExecute(self, classes, filePath, depth):
+        plugin = self._plugin
+        storage = plugin.create_index_storage()
+
+        executionPatternEntry = self._builder.get_object('entryGraphMLExecutionPattern')
+
+        exporter = GraphMLExporter()
+        exporter.exportClassGraphhToFile(plugin, storage, classes, filePath, depth)
+
+        commandPattern = executionPatternEntry.get_text()
+        commandLine = commandPattern % filePath
+        commandLine = commandLine.split(" ")
+
+        command = []
+        for commandPart in commandLine:
+            commandPart = os.path.expanduser(commandPart)
+            command.append(commandPart)
+
+        sp = subprocess.Popen(command, stdin=PIPE, stdout=PIPE, stderr=PIPE)
+        sp.wait()
+
+        os.remove(filePath)

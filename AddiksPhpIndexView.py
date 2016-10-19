@@ -16,7 +16,7 @@
 
 from gi.repository import GLib, Gtk, GObject, Gedit, PeasGtk, Gio, GtkSource
 
-from PHP.get_namespace_by_classname import get_namespace_by_classname
+from PHP.functions import get_namespace_by_classname
 from PHP.PhpFileAnalyzer import PhpFileAnalyzer
 from PHP.PhpIndex import PhpIndex
 from PHP.IndexPathManager import IndexPathManager
@@ -154,6 +154,9 @@ class AddiksPhpIndexView(GObject.Object, Gedit.ViewActivatable):
                 indexPathManager = self.get_index_path_manager()
                 index = PhpIndex(indexFilepath, indexPathManager=indexPathManager)
                 index.reindex_phpfile(filepath)
+
+    def get_settings(self):
+        return AddiksPhpIndexApp.get().get_settings()
 
     ### MENU ITEMS
 
@@ -374,6 +377,35 @@ class AddiksPhpIndexView(GObject.Object, Gedit.ViewActivatable):
     def __filteredUsesKey(self, use):
         return use[3] + str(use[1]) + use[4]
 
+    def on_export_to_graphml(self, action, data=None):
+        if not self.is_index_built():
+            return self.on_index_not_build()
+
+        builder = self.getGladeBuilder()
+
+        line, column = self.get_current_cursor_position()
+        if line != None and column != None:
+            use_statements = self.get_php_fileindex().get_use_statements()
+            declarationType, name, containingClassName = self.get_php_fileindex().get_declaration_by_position(line, column)
+            namespace = self.get_php_fileindex().get_namespace()
+
+            if declarationType == 'class':
+                className = name
+
+                if className in use_statements:
+                    className = use_statements[className]
+                elif className[0] != '\\':
+                    className = namespace + '\\' + className
+
+                listStoreSelected = builder.get_object('liststoreExportGraphMLSelected')
+
+                rowIterSelected = listStoreSelected.append()
+                listStoreSelected.set_value(rowIterSelected, 0, className)
+
+        window = builder.get_object('windowExportGraphML')
+        window.connect('delete-event', lambda w, e: w.hide() or True)
+        window.show_all()
+
     def open_by_position(self, filePath, line, column):
         GLib.idle_add(self.do_open_by_position, filePath, line, column)
 
@@ -449,31 +481,36 @@ class AddiksPhpIndexView(GObject.Object, Gedit.ViewActivatable):
 
     def get_index_storage(self):
         if self._storage == None:
-            indexPath = self.get_index_filepath()
-
-            if indexPath == None:
-                pass
-
-            elif indexPath == 'neo4j':
-                from storage.neo4j import Neo4jStorage
-                self._storage = Neo4jStorage()
-
-            elif indexPath == 'dummy':
-                from storage.dummy import DummyStorage
-                self._storage = DummyStorage()
-
-            elif indexPath.find(".sqlite3")>0:
-                from storage.sqlite3 import Sqlite3Storage
-                self._storage = Sqlite3Storage(indexPath)
-
-            elif indexPath.find("/")>0:
-                from storage.shelve import ShelveStorage
-                self._storage = ShelveStorage(indexPath)
-
-            else:
-                raise Exception("Cannot open index '"+indexPath+"'!")
-
+            self._storage = self.create_index_storage()
         return self._storage
+
+    def create_index_storage(self):
+        storage = None
+        indexPath = self.get_index_filepath()
+
+        if indexPath == None:
+            pass
+
+        elif indexPath == 'neo4j':
+            from storage.neo4j import Neo4jStorage
+            storage = Neo4jStorage()
+
+        elif indexPath == 'dummy':
+            from storage.dummy import DummyStorage
+            storage = DummyStorage()
+
+        elif indexPath.find(".sqlite3")>0:
+            from storage.sqlite3 import Sqlite3Storage
+            storage = Sqlite3Storage(indexPath)
+
+        elif indexPath.find("/")>0:
+            from storage.shelve import ShelveStorage
+            storage = ShelveStorage(indexPath)
+
+        else:
+            raise Exception("Cannot open index '"+indexPath+"'!")
+
+        return storage
 
     def get_php_fileindex(self, filePath=None):
         isLocalFile = False

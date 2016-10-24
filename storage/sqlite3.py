@@ -1023,7 +1023,6 @@ class Sqlite3Storage:
         cursor.execute("DELETE FROM files                   WHERE file_path = ?", (filePath, ))
         cursor.execute("DELETE FROM classes_member_uses     WHERE file_path = ?", (filePath, ))
         cursor.execute("DELETE FROM classes_method_uses     WHERE file_path = ?", (filePath, ))
-        cursor.execute("DELETE FROM classes_interfaces_uses WHERE file_path = ?", (filePath, ))
         cursor.execute("DELETE FROM constants_uses          WHERE file_path = ?", (filePath, ))
         cursor.execute("DELETE FROM classes_uses            WHERE file_path = ?", (filePath, ))
         cursor.execute("DELETE FROM function_uses           WHERE file_path = ?", (filePath, ))

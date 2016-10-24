@@ -8,12 +8,13 @@ This plugin contains features that are crucial for PHP-development using a proje
  * Autocompletion
  * Open declaration
  * Type-View
- * Caller-View (Where is this used?)
+ * Caller-View ("Where is my component used?")
  * Automaticly write USE-statements
  * Automaticly add doc-comments to new members and variables
  * Outline (Uses code-folding)
  * Project-wide search
  * Include and Exclude folders from index
+ * Export customizable class-diagram as GraphML-file (can be opened with yEd Graph Editor)
 
 ## Licence
 

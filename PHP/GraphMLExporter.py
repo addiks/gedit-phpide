@@ -14,8 +14,8 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from PHP.functions import get_namespace_by_classname
-from PHP.PhpFileAnalyzer import PhpFileAnalyzer
+from .functions import get_namespace_by_classname
+from .PhpFileAnalyzer import PhpFileAnalyzer
 from lxml import etree as xml
 
 class GraphMLExporter:

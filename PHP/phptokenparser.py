@@ -14,9 +14,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from PHP.phplexer import token_get_all
-from PHP.phplexer import token_name
-from PHP.phplexer import token_num
+from .phplexer import token_get_all
+from .phplexer import token_name
+from .phplexer import token_num
 import PHP.phplexer
 import operator
 

@@ -14,12 +14,12 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from PHP.phplexer import token_get_all
-from PHP.phplexer import token_name
-from PHP.phplexer import token_num
-from PHP.functions import get_namespace_by_classname
-from PHP.functions import get_annotations_by_doccomment
-from PHP.phptokenparser import parse_php_tokens
+from .phplexer import token_get_all
+from .phplexer import token_name
+from .phplexer import token_num
+from .functions import get_namespace_by_classname
+from .functions import get_annotations_by_doccomment
+from .phptokenparser import parse_php_tokens
 import re
 
 T_STRING   = token_num("T_STRING")

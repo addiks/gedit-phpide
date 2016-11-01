@@ -8,6 +8,7 @@
         <!--    <menuitem name="OpenDepencyView"  action="OpenDepencyViewAction"/> -->
             <separator/>
             <menuitem name="ToggleOutline"    action="ToggleOutlineAction"/>
+            <menuitem name="ShowInfoWindow"   action="ShowInfoWindowAction"/>
             <menuitem name="SearchIndex"      action="SearchIndexAction"/>
 
             <separator/>

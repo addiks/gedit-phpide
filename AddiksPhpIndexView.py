@@ -59,6 +59,10 @@ class AddiksPhpIndexView(GObject.Object, Gedit.ViewActivatable):
         if provider not in completion.get_providers():
             completion.add_provider(provider)
 
+        self.view.connect("move-cursor", self.on_textview_move_cursor)
+        self.view.connect("button-press-event", self.on_textview_move_cursor)
+#        self.view.connect("key-press-event", self.on_textview_move_cursor)
+
         document = self.view.get_buffer()
         document.connect("changed", self.__on_document_changed)
         document.connect("insert-text", self.__on_document_insert)
@@ -131,10 +135,12 @@ class AddiksPhpIndexView(GObject.Object, Gedit.ViewActivatable):
                 # new line, add indention
                 GLib.idle_add(self.do_textbuffer_insert, document, line+1, 0, indention)
 
+            AddiksPhpIndexApp.get().update_info_window(self)
+
     def __on_document_changed(self, document, userData=None):
         # make sure the php-file-index gets updated when the text get changed
         if document.get_location() != None:
-
+            AddiksPhpIndexApp.get().update_info_window(self)
             filepath = document.get_location().get_path()
             self.invalidate_php_fileindex(filepath)
         return False
@@ -201,6 +207,14 @@ class AddiksPhpIndexView(GObject.Object, Gedit.ViewActivatable):
         window = gladeBuilder.get_object("windowSearchIndex")
         window.connect('delete-event', lambda w, e: w.hide() or True)
         window.show_all()
+
+    def on_show_info_window(self, action, data=None):
+        if not self.is_index_built():
+            return self.on_index_not_build()
+        AddiksPhpIndexApp.get().show_info_window(self)
+
+    def on_textview_move_cursor(self, textView=None, step=None, count=None, extendSelection=None, userData=None):
+        GLib.idle_add(AddiksPhpIndexApp.get().update_info_window, self)
 
     def on_open_type_view(self, action, data=None):
         if not self.is_index_built():

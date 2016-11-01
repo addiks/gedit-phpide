@@ -111,6 +111,10 @@ class AddiksPhpIndexWindow(GObject.Object, Gedit.WindowActivatable):
         pluginView = self.get_active_view()
         pluginView.on_export_to_graphml(action, data)
 
+    def on_show_info_window(self, action, data=None):
+        pluginView = self.get_active_view()
+        pluginView.on_show_info_window(action, data)
+
     ### HELPERS
 
     def get_active_view(self):

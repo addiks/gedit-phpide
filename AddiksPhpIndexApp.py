@@ -14,26 +14,31 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from gi.repository import GLib, Gtk, GObject, Gedit, Gio, Notify, PeasGtk
+from gi.repository import GLib, Gtk, GtkSource, GObject, Gedit, Gio, Notify, PeasGtk
 from AddiksPhpGladeHandler import AddiksPhpGladeHandler
+from PHP.functions import get_namespace_by_classname
 import os
 
 ACTIONS = [
-    ['PhpAction',               "PHP",                  "",              None],
-    ['BuildIndexAction',        "Build index",          "",              "on_build_index"],
-    ['UpdateIndexAction',       "Update index",         "",              "on_update_index"],
-    ['ToggleOutlineAction',     "Toogle outline",       "F2",            "on_toggle_outline"],
-    ['OpenDeclarationAction',   "Open declaration",     "F3",            "on_open_declaration_view"],
-    ['OpenTypeViewAction',      "Open type view",       "<Alt>F3",       "on_open_type_view"],
-    ['OpenCallViewAction',      "Open call view",       "<Ctrl>F3",      "on_open_call_view"],
+    ['PhpAction',               "PHP",                  "",                None],
+    ['BuildIndexAction',        "Build index",          "",                "on_build_index"],
+    ['UpdateIndexAction',       "Update index",         "",                "on_update_index"],
+    ['ToggleOutlineAction',     "Toogle outline",       "F2",              "on_toggle_outline"],
+    ['ShowInfoWindowAction',    "Show info window",     "<Ctrl>F2",        "on_show_info_window"],
+    ['OpenDeclarationAction',   "Open declaration",     "F3",              "on_open_declaration_view"],
+    ['OpenTypeViewAction',      "Open type view",       "<Alt>F3",         "on_open_type_view"],
+    ['OpenCallViewAction',      "Open call view",       "<Ctrl>F3",        "on_open_call_view"],
     ['ExportGraphMLAction',     "Export to GraphML",    "<Ctrl><Shift>F3", "on_export_to_graphml"],
-    ['SearchIndexAction',       "Search the index",     "<Alt>L",        "on_search_index"],
-    ['OpenDepencyViewAction',   "Open depency view",    "",              "on_open_depency_view"],
-    ['ManageIndexPathsAction',  "Manage index paths",   "",              "on_index_paths_manager"],
+    ['SearchIndexAction',       "Search the index",     "<Alt>L",          "on_search_index"],
+    ['OpenDepencyViewAction',   "Open depency view",    "",                "on_open_depency_view"],
+    ['ManageIndexPathsAction',  "Manage index paths",   "",                "on_index_paths_manager"],
 ]
 
 class AddiksPhpIndexApp(GObject.Object, Gedit.AppActivatable, PeasGtk.Configurable):
     app = GObject.property(type=Gedit.App)
+    _info_window = None
+    _info_buffer = None
+    _settings = None
 
     def __init__(self):
         GObject.Object.__init__(self)
@@ -131,3 +136,145 @@ class AddiksPhpIndexApp(GObject.Object, Gedit.AppActivatable, PeasGtk.Configurab
     def unregister_view(self, view):
         if view in self.views:
             self.views.remove(view)
+
+    ### INFO WINDOW
+
+    def show_info_window(self, phpIndexView):
+        if self._info_window == None:
+            self.__build_info_window()
+        self._info_window.show_all()
+        self.update_info_window(phpIndexView)
+
+    def update_info_window(self, phpIndexView, declaration=None):
+        if self._info_window != None:
+            fileAnalyzer = phpIndexView.get_php_fileindex()
+            infoWindow = self._info_window
+            sourceBuffer = self._info_buffer
+
+
+            if declaration != None:
+                decType, decName, containingClass = declaration
+
+            else:
+                line, column = phpIndexView.get_current_cursor_position()
+                decType, decName, containingClass = fileAnalyzer.get_declaration_by_position(line, column)
+
+                if decType == "class" and containingClass == None:
+                    decName = fileAnalyzer.map_classname_by_use_statements(decName)
+
+            storage = phpIndexView.get_index_storage()
+
+            infoText = ""
+            if decType != None:
+                infoText = self.build_info_text(storage, decType, decName, containingClass)
+
+                infoWindow.set_title("Gedit - Definition of: %s" % decName)
+
+            else:
+                infoWindow.set_title("Gedit - Definition of: {Nothing yet}")
+
+            phpLanguage = phpIndexView.view.get_buffer().get_language()
+            sourceBuffer.set_highlight_syntax(True)
+            sourceBuffer.set_language(phpLanguage)
+            sourceBuffer.set_text(infoText)
+
+    def build_info_text(self, storage, decType, decName, containingClass=None):
+        prefix = "<?php\n\n"
+        labelText = None
+        filePath = None
+        infoText = None
+        print([decType, decName, containingClass])
+        if decType == 'function':
+            namespace = containingClass
+            labelText = storage.get_function_doccomment(namespace, decName)
+
+        elif decType in ['const', 'constant']:
+            labelText = storage.get_constant_doccomment(decName)
+
+        elif decType == 'class':
+            if containingClass != None:
+                namespace, className = get_namespace_by_classname(containingClass)
+
+            else:
+                namespace, className = get_namespace_by_classname(decName)
+
+            filePath, line, column = storage.get_class_position(namespace, className)
+
+            infoText = "<?php\n\nnamespace "+namespace+";\n\n"
+
+            docComment = storage.get_class_doccomment(namespace, className)
+            if docComment != None:
+                infoText += docComment + "\n"
+
+            if filePath != None and line != None:
+                infoText += self.__get_text_until_bracket(filePath, line, column)
+
+            for methodName in storage.get_class_methods(namespace, className):
+                methodFilePath, methodLine, methodColumn = storage.get_method_position(namespace, className, methodName)
+
+                methodLabelText = self.__get_text_until_bracket(methodFilePath, methodLine, methodColumn)
+
+                if methodLabelText != None:
+                    infoText += "\n" + methodLabelText
+
+        elif decType == 'method':
+            if containingClass != None:
+                namespace, className = get_namespace_by_classname(containingClass)
+                labelText = storage.get_method_doccomment(namespace, className, decName)
+                filePath, line, column = storage.get_method_position(namespace, className, decName)
+                prefix = "<?php\n\nnamespace "+namespace+";\n\n"
+
+        elif decType == 'member':
+            if containingClass != None:
+                namespace, className = get_namespace_by_classname(containingClass)
+                labelText = storage.get_member_doccomment(namespace, className, decName)
+
+        else:
+            print("unknown declaration-type: " + decType)
+
+        if infoText == None:
+            if labelText == None:
+                labelText = ""
+
+            if filePath != None and line != None:
+                if len(labelText) > 0:
+                    labelText += "\n"
+                labelText += self.__get_text_until_bracket(filePath, line, column)
+
+            if len(labelText) > 0:
+                labelText = prefix + labelText
+            infoText = labelText
+
+        return infoText
+
+    def __get_text_until_bracket(self, filePath, lineNr, columnNr):
+        code = ""
+        if filePath != "INTERNAL":
+            with open(filePath, "r") as readHandle:
+                lines = readHandle.readlines()
+                lines = lines[lineNr-1:]
+                code = "\n".join(lines)
+                pos = len(code)
+                for needle in ["{", ";", "\n"]:
+                    posNeedle = code.find(needle)
+                    if posNeedle > 0 and pos > posNeedle:
+                        pos = posNeedle
+                code = code[0:pos]
+        return code
+
+
+    def __build_info_window(self):
+        infoWindow = Gtk.Window()
+        scrolledWindow = Gtk.ScrolledWindow()
+        sourceView = GtkSource.View()
+        sourceBuffer = GtkSource.Buffer()
+
+        sourceView.editable = False
+        scrolledWindow.set_size_request(500, 300)
+
+        sourceView.set_buffer(sourceBuffer)
+        scrolledWindow.add(sourceView)
+        infoWindow.add(scrolledWindow)
+
+        self._info_buffer = sourceBuffer
+        self._info_window = infoWindow

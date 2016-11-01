@@ -16,6 +16,7 @@
 
 from PHP.functions import get_namespace_by_classname
 from AutocompleteProposal import AutocompleteProposal
+from AddiksPhpIndexApp import AddiksPhpIndexApp
 from PHP.phplexer import token_name, token_num
 from gi.repository import Gtk, GtkSource, GObject
 import re
@@ -33,7 +34,6 @@ class AutocompleteProvider(GObject.Object, GtkSource.CompletionProvider):
         self.mark = None
         self.colm = None
         self.type = None
-        self._info_label = Gtk.Label()
 
     def set_plugin(self, pluginView):
         self.__pluginView = pluginView
@@ -121,51 +121,37 @@ class AutocompleteProvider(GObject.Object, GtkSource.CompletionProvider):
         return None # or GdkPixbuf.Pixbuf
 
     def do_get_info_widget(self, proposal):
-        widget = Gtk.ScrolledWindow()
-        widget.set_size_request(500, 300)
-        self._info_label = Gtk.Label()
-        self._info_label.set_text(proposal.get_word())
-        self.do_update_info(proposal)
-        widget.add(self._info_label)
-        widget.show_all()
-        return widget # or some Gtk.Widget with extra info
+        sourceView = GtkSource.View()
+        sourceView.editable = False
+        sourceView.set_property("show-line-numbers", True)
 
-    def do_update_info(self, proposal, info = None):
-        # proposal (GtkSource.CompletionProposal)
-        # info (GtkSource.CompletionInfo)
-        storage   = self.__pluginView.get_index_storage()
+        phpLanguage = self.__pluginView.view.get_buffer().get_language()
 
-        labelText = None
-        if proposal.get_type() == 'function':
-            namespace = proposal.get_additional_info()
-            labelText = storage.get_function_doccomment(namespace, proposal.get_word())
+        sourceBuffer = sourceView.get_buffer()
+        sourceBuffer.set_highlight_syntax(True)
+        sourceBuffer.set_language(phpLanguage)
 
-        elif proposal.get_type() == 'const':
-            labelText = storage.get_constant_doccomment(proposal.get_word())
+        infoLabel = Gtk.Label()
+        infoLabel.set_text(proposal.get_word())
 
-        elif proposal.get_type() == 'class':
-            if proposal.get_additional_info() != None:
-                fullClassName = proposal.get_additional_info()
-                namespace, className = get_namespace_by_classname(fullClassName)
-                labelText = storage.get_class_doccomment(namespace, className)
+        storage = self.__pluginView.get_index_storage()
+        decType = proposal.get_type()
+        decName = proposal.get_word()
+        containingClass = proposal.get_additional_info()
 
-        elif proposal.get_type() == 'method':
-            if proposal.get_additional_info() != None:
-                fullClassName = proposal.get_additional_info()
-                namespace, className = get_namespace_by_classname(fullClassName)
-                labelText = storage.get_method_doccomment(namespace, className, proposal.get_word())
+        labelText = AddiksPhpIndexApp.get().build_info_text(storage, decType, decName, containingClass)
+        if len(labelText) > 0:
+            infoLabel.set_text(labelText)
+            sourceBuffer.set_text(labelText)
 
-        elif proposal.get_type() == 'member':
-            if proposal.get_additional_info() != None:
-                fullClassName = proposal.get_additional_info()
-                namespace, className = get_namespace_by_classname(fullClassName)
-                labelText = storage.get_member_doccomment(namespace, className, proposal.get_word())
+        infoWidget = Gtk.ScrolledWindow()
+        infoWidget.set_size_request(500, 300)
+        infoWidget.add(sourceView)
+        infoWidget.show_all()
 
-        else:
-            print("unknown: " + proposal.get_type())
+        AddiksPhpIndexApp.get().update_info_window(self.__pluginView, (decType, decName, containingClass))
 
-        if labelText != None:
-            self._info_label.set_text(labelText)
+        return infoWidget # or some Gtk.Widget with extra info
 
     def do_get_name(self):
         if self.type == None:

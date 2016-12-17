@@ -18,7 +18,8 @@ from PHP.functions import get_namespace_by_classname
 from AutocompleteProposal import AutocompleteProposal
 from AddiksPhpIndexApp import AddiksPhpIndexApp
 from PHP.phplexer import token_name, token_num
-from gi.repository import Gtk, GtkSource, GObject
+from gi.repository import GLib, Gtk, GtkSource, GObject
+from _thread import start_new_thread
 import re
 
 T_STRING      = token_num("T_STRING")
@@ -134,24 +135,35 @@ class AutocompleteProvider(GObject.Object, GtkSource.CompletionProvider):
         infoLabel = Gtk.Label()
         infoLabel.set_text(proposal.get_word())
 
-        storage = self.__pluginView.get_index_storage()
-        decType = proposal.get_type()
-        decName = proposal.get_word()
-        containingClass = proposal.get_additional_info()
-
-        labelText = AddiksPhpIndexApp.get().build_info_text(storage, decType, decName, containingClass)
-        if len(labelText) > 0:
-            infoLabel.set_text(labelText)
-            sourceBuffer.set_text(labelText)
+        start_new_thread(self.__fill_info_widget, (sourceBuffer, infoLabel, proposal))
 
         infoWidget = Gtk.ScrolledWindow()
         infoWidget.set_size_request(500, 300)
         infoWidget.add(sourceView)
         infoWidget.show_all()
 
-        AddiksPhpIndexApp.get().update_info_window(self.__pluginView, (decType, decName, containingClass))
-
         return infoWidget # or some Gtk.Widget with extra info
+
+    def __fill_info_widget(self, sourceBuffer, infoLabel, proposal):
+        storage = self.__pluginView.get_index_storage()
+        decType = proposal.get_type()
+        decName = proposal.get_word()
+        containingClass = proposal.get_additional_info()
+
+        labelText = AddiksPhpIndexApp.get().build_info_text(storage, decType, decName, containingClass)
+
+        GLib.idle_add(self.__do_fill_info_widget, sourceBuffer, infoLabel, proposal, labelText)
+
+    def __do_fill_info_widget(self, sourceBuffer, infoLabel, proposal, labelText):
+        if len(labelText) > 0:
+            infoLabel.set_text(labelText)
+            sourceBuffer.set_text(labelText)
+
+        decType = proposal.get_type()
+        decName = proposal.get_word()
+        containingClass = proposal.get_additional_info()
+
+        AddiksPhpIndexApp.get().update_info_window(self.__pluginView, (decType, decName, containingClass))
 
     def do_get_name(self):
         if self.type == None:

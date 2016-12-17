@@ -14,6 +14,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import gi
+gi.require_version('Notify', '0.7')
+
 from gi.repository import GLib, Gtk, GtkSource, GObject, Gedit, Gio, Notify, PeasGtk
 from AddiksPhpGladeHandler import AddiksPhpGladeHandler
 from PHP.functions import get_namespace_by_classname
@@ -183,7 +186,7 @@ class AddiksPhpIndexApp(GObject.Object, Gedit.AppActivatable, PeasGtk.Configurab
         labelText = None
         filePath = None
         infoText = None
-        print([decType, decName, containingClass])
+
         if decType == 'function':
             namespace = containingClass
             labelText = storage.get_function_doccomment(namespace, decName)

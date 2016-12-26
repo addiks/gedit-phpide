@@ -16,20 +16,27 @@
 
 import sqlite3
 import queue
+import threading
 from _thread import start_new_thread
 
 class Sqlite3Storage:
 
-    def __init__(self, index_path):
+    def __init__(self, index_path, useWorkerThread=False):
         self._index_path = index_path
         self._insert_counter = 0
         self._is_transaction_active = False
         self._queue = queue.Queue()
+        self._useWorkerThread = useWorkerThread
+        self._lock = threading.Lock()
 
-        start_new_thread(self.__initWorker, (index_path, ))
+        if useWorkerThread:
+            start_new_thread(self.__initWorker, (index_path, ))
+
+        else:
+            self.__initWorker(index_path)
 
     def __initWorker(self, index_path):
-        self._connection = sqlite3.connect(index_path)
+        self._connection = sqlite3.connect(index_path, check_same_thread = False)
         self._connection.text_factory = str
         self._cursor = self._connection.cursor()
 
@@ -41,28 +48,44 @@ class Sqlite3Storage:
         if self._cursor.rowcount < 5:
             self.__create_tables()
 
-        while True:
-            queueItem = self._queue.get()
-            if queueItem is None:
-                break
-            statement, parameters, resultContainer = queueItem
-            if parameters == None:
-                result = self._cursor.execute(statement)
-            else:
-                result = self._cursor.execute(statement, parameters)
-            resultCopy = []
-            for row in result:
-#                print(row)
-                resultCopy.append(row)
-            resultContainer.append(resultCopy)
-            self._queue.task_done()
+        if self._useWorkerThread:
+            while True:
+                queueItem = self._queue.get()
+                if queueItem is None:
+                    break
+                statement, parameters, resultContainer = queueItem
+                if parameters == None:
+                    result = self._cursor.execute(statement)
+                else:
+                    result = self._cursor.execute(statement, parameters)
+                resultCopy = []
+                for row in result:
+                    resultCopy.append(row)
+                resultContainer.append([resultCopy, self._cursor.lastrowid])
+                self._queue.task_done()
 
     def __query(self, statement, parameters=None):
-        query = self._queue
-        resultContainer = []
-        query.put([statement, parameters, resultContainer])
-        query.join()
-        return resultContainer.pop()
+        if self._useWorkerThread:
+            query = self._queue
+            resultContainer = []
+            query.put([statement, parameters, resultContainer])
+            query.join()
+            return resultContainer.pop()
+
+        else:
+            resultCopy = []
+            try:
+                self._lock.acquire(True)
+                if parameters == None:
+                    result = self._cursor.execute(statement)
+                else:
+                    result = self._cursor.execute(statement, parameters)
+                resultCopy = []
+                for row in result:
+                    resultCopy.append(row)
+            finally:
+                self._lock.release()
+            return [resultCopy, self._cursor.lastrowid]
 
     def __create_tables(self):
         cursor = self._cursor
@@ -231,21 +254,21 @@ class Sqlite3Storage:
 
     def gethash(self, filePath):
         hashResult = None
-        result = self.__query("SELECT hash FROM files WHERE file_path = ?", (filePath, ))
+        result, lastrowid = self.__query("SELECT hash FROM files WHERE file_path = ?", (filePath, ))
         for hashValue, in result:
             hashResult = hashValue
         return hashResult
 
     def getmtime(self, filePath):
         mtimeResult = 0
-        result = self.__query("SELECT mtime FROM files WHERE file_path = ?", (filePath, ))
+        result, lastrowid = self.__query("SELECT mtime FROM files WHERE file_path = ?", (filePath, ))
         for mtime, in result:
             break
         return mtimeResult
 
     def get_all_files(self):
         resultPaths = []
-        result = self.__query("SELECT file_path FROM files", ())
+        result, lastrowid = self.__query("SELECT file_path FROM files", ())
         for filePath, in result:
             resultPaths.append(filePath)
         return resultPaths
@@ -255,12 +278,12 @@ class Sqlite3Storage:
     def add_class(self, filePath, namespace, className, classType, parentName, interfaces, isFinal, isAbstract, docComment, line, column):
         while len(namespace)>0 and namespace[0] == '\\':
             namespace = namespace[1:]
-        self.__query(
+        result, lastrowid = self.__query(
             "INSERT INTO classes (file_path, namespace, name, type, parent_name, is_final, is_abstract, doccomment, line, column) "
             "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             (filePath, namespace, className, classType, parentName, isFinal, isAbstract, docComment, line, column, )
         )
-        classId = cursor.lastrowid
+        classId = lastrowid
         for interface in interfaces:
             self.__query(
                 "INSERT INTO classes_interfaces_uses (class_id, name) "
@@ -274,7 +297,7 @@ class Sqlite3Storage:
         resultClassType = "class"
         if namespace[0] == '\\':
             namespace = namespace[1:]
-        result = self.__query("SELECT name, type FROM classes WHERE namespace = ? AND name = ? LIMIT 1", (namespace, className))
+        result, lastrowid = self.__query("SELECT name, type FROM classes WHERE namespace = ? AND name = ? LIMIT 1", (namespace, className))
         for className, classType in result:
             resultClassType = classType
         return resultClassType
@@ -283,7 +306,7 @@ class Sqlite3Storage:
         file_path, line, column = (None, None, None, )
         while len(namespace) > 0 and namespace[0] == '\\':
             namespace = namespace[1:]
-        result = self.__query(
+        result, lastrowid = self.__query(
             "SELECT file_path, line, column "
             "FROM classes "
             "WHERE namespace=? AND name=?",
@@ -297,7 +320,7 @@ class Sqlite3Storage:
         classId, file_path = (None, None, )
         while len(namespace)>0 and namespace[0] == '\\':
             namespace = namespace[1:]
-        result = self.__query(
+        result, lastrowid = self.__query(
             "SELECT id, file_path "
             "FROM classes "
             "WHERE namespace=? AND name=?",
@@ -311,7 +334,7 @@ class Sqlite3Storage:
         parentName = None
         while len(namespace)>0 and namespace[0] == '\\':
             namespace = namespace[1:]
-        result = self.__query(
+        result, lastrowid = self.__query(
             "SELECT id, parent_name "
             "FROM classes "
             "WHERE namespace=? AND name=?",
@@ -325,7 +348,7 @@ class Sqlite3Storage:
         children = []
         if className[0] != '\\':
             className = '\\' + className
-        result = self.__query(
+        result, lastrowid = self.__query(
             "SELECT namespace, name "
             "FROM classes "
             "WHERE parent_name=?",
@@ -336,7 +359,7 @@ class Sqlite3Storage:
                 namespace += "\\"
             children.append(namespace + name)
         if includeInteraceImplementations:
-            result = self.__query(
+            result, lastrowid = self.__query(
                 "SELECT c.namespace, c.name "
                 "FROM classes_interfaces_uses i "
                 "LEFT JOIN classes c ON(i.class_id = c.id) "
@@ -352,7 +375,7 @@ class Sqlite3Storage:
     def get_class_interfaces(self, namespace, className):
         interfaces = []
         classId, filePath = self.get_class_id(namespace, className)
-        result = self.__query(
+        result, lastrowid = self.__query(
             "SELECT i.id, i.name "
             "FROM classes_interfaces_uses i "
             "WHERE i.class_id=?",
@@ -364,7 +387,7 @@ class Sqlite3Storage:
 
     def get_all_classnames(self, withNamespaces=True):
         classNames = []
-        result = self.__query(
+        result, lastrowid = self.__query(
             "SELECT namespace, name "
             "FROM classes ",
             ()
@@ -377,7 +400,7 @@ class Sqlite3Storage:
         return classNames
 
     def get_class_doccomment(self, namespace, className):
-        result = self.__query(
+        result, lastrowid = self.__query(
             "SELECT id, doccomment "
             "FROM classes "
             "WHERE namespace = ? AND name = ?",
@@ -401,7 +424,7 @@ class Sqlite3Storage:
     def get_class_uses(self, name):
         if name[0] != '\\':
             name = '\\' + name
-        result = self.__query(
+        result, lastrowid = self.__query(
             "SELECT file_path, line, column, className, functionName "
             "FROM classes_uses "
             "WHERE name = ? "
@@ -416,7 +439,7 @@ class Sqlite3Storage:
     def get_class_uses_by_class(self, className):
         while len(className)>0 and className[0] == '\\':
             className = className[1:]
-        result = self.__query(
+        result, lastrowid = self.__query(
             "SELECT file_path, line, column, name, functionName "
             "FROM classes_uses "
             "WHERE className = ? "
@@ -442,7 +465,7 @@ class Sqlite3Storage:
 
     def get_class_constants(self, namespace, className):
         classId, filePath = self.get_class_id(namespace, className)
-        result = self.__query(
+        result, lastrowid = self.__query(
             "SELECT name "
             "FROM classes_constants "
             "WHERE class_id=?",
@@ -470,7 +493,7 @@ class Sqlite3Storage:
 
     def get_class_constant_doccomment(self, namespace, className, constantName):
         classId, filePath = self.get_class_id(namespace, className)
-        result = self.__query(
+        result, lastrowid = self.__query(
             "SELECT id, doccomment "
             "FROM classes_constants "
             "WHERE class_id = ? AND name = ?",
@@ -499,7 +522,7 @@ class Sqlite3Storage:
         while len(namespace)>0 and namespace[0] == '\\':
             namespace = namespace[1:]
         classId, filePath = self.get_class_id(namespace, className)
-        result = self.__query(
+        result, lastrowid = self.__query(
             "SELECT name "
             "FROM classes_methods "
             "WHERE class_id=? and visibility=? and is_static=0",
@@ -514,7 +537,7 @@ class Sqlite3Storage:
         while len(namespace)>0 and namespace[0] == '\\':
             namespace = namespace[1:]
         classId, filePath = self.get_class_id(namespace, className)
-        result = self.__query(
+        result, lastrowid = self.__query(
             "SELECT name "
             "FROM classes_methods "
             "WHERE class_id=? and is_static=0",
@@ -529,7 +552,7 @@ class Sqlite3Storage:
         while len(namespace)>0 and namespace[0] == '\\':
             namespace = namespace[1:]
         classId, filePath = self.get_class_id(namespace, className)
-        result = self.__query(
+        result, lastrowid = self.__query(
             "SELECT name "
             "FROM classes_methods "
             "WHERE class_id=? and visibility=? and is_static=1",
@@ -560,7 +583,7 @@ class Sqlite3Storage:
         while len(namespace)>0 and namespace[0] == '\\':
             namespace = namespace[1:]
         classId, filePath = self.get_class_id(namespace, className)
-        result = self.__query(
+        result, lastrowid = self.__query(
             "SELECT line, column "
             "FROM classes_methods "
             "WHERE class_id=? AND name=?",
@@ -572,7 +595,7 @@ class Sqlite3Storage:
 
     def get_method_doccomment(self, namespace, className, methodName):
         classId, filePath = self.get_class_id(namespace, className)
-        result = self.__query(
+        result, lastrowid = self.__query(
             "SELECT id, doccomment "
             "FROM classes_methods "
             "WHERE class_id = ? AND name = ?",
@@ -586,7 +609,7 @@ class Sqlite3Storage:
 
     def get_method_arguments(self, namespace, className, methodName):
         classId, filePath = self.get_class_id(namespace, className)
-        result = self.__query(
+        result, lastrowid = self.__query(
             "SELECT id, arguments "
             "FROM classes_methods "
             "WHERE class_id = ? AND name = ?",
@@ -606,7 +629,7 @@ class Sqlite3Storage:
         )
 
     def get_method_uses(self, name):
-        result = self.__query(
+        result, lastrowid = self.__query(
             "SELECT file_path, line, column, className, functionName "
             "FROM classes_method_uses "
             "WHERE name = ? "
@@ -644,7 +667,7 @@ class Sqlite3Storage:
 
     def get_class_members(self, namespace, className, visibility="public"):
         classId, filePath = self.get_class_id(namespace, className)
-        result = self.__query(
+        result, lastrowid = self.__query(
             "SELECT name "
             "FROM classes_members "
             "WHERE class_id=? and visibility=? and is_static=0",
@@ -657,7 +680,7 @@ class Sqlite3Storage:
 
     def get_all_class_members(self, namespace, className):
         classId, filePath = self.get_class_id(namespace, className)
-        result = self.__query(
+        result, lastrowid = self.__query(
             "SELECT name "
             "FROM classes_members "
             "WHERE class_id=? and is_static=0",
@@ -670,7 +693,7 @@ class Sqlite3Storage:
 
     def get_static_class_members(self, namespace, className, visibility="public"):
         classId, filePath = self.get_class_id(namespace, className)
-        result = self.__query(
+        result, lastrowid = self.__query(
             "SELECT name "
             "FROM classes_members "
             "WHERE class_id=? and visibility=? and is_static=1",
@@ -696,7 +719,7 @@ class Sqlite3Storage:
 
     def get_member_doccomment(self, namespace, className, memberName):
         classId, filePath = self.get_class_id(namespace, className)
-        result = self.__query(
+        result, lastrowid = self.__query(
             "SELECT id, doccomment "
             "FROM classes_members "
             "WHERE class_id = ? AND name = ?",
@@ -716,7 +739,7 @@ class Sqlite3Storage:
         )
 
     def get_member_uses(self, name):
-        result = self.__query(
+        result, lastrowid = self.__query(
             "SELECT file_path, line, column, className, functionName "
             "FROM classes_member_uses "
             "WHERE name = ? "
@@ -731,7 +754,7 @@ class Sqlite3Storage:
     def get_members_by_type_hint(self, namespace, className):
         typeHint = namespace + "\\" + className
         members = []
-        result = self.__query(
+        result, lastrowid = self.__query(
             "SELECT c.namespace, c.name, cm.name "
             "FROM classes_members cm "
             "LEFT JOIN classes c ON(cm.class_id = c.id)"
@@ -769,7 +792,7 @@ class Sqlite3Storage:
         return (file_path, line, column, doccomment, )
 
     def get_all_functions(self):
-        result = self.__query(
+        result, lastrowid = self.__query(
             "SELECT namespace, name "
             "FROM functions "
         )
@@ -793,7 +816,7 @@ class Sqlite3Storage:
         return (file_path, line, column, )
 
     def get_function_doccomment(self, namespace, functionName):
-        result = self.__query(
+        result, lastrowid = self.__query(
             "SELECT id, doccomment "
             "FROM functions "
             "WHERE namespace = ? AND name = ?",
@@ -806,7 +829,7 @@ class Sqlite3Storage:
         return resultDocComment
 
     def get_function_arguments(self, namespace, functionName):
-        result = self.__query(
+        result, lastrowid = self.__query(
             "SELECT id, arguments "
             "FROM functions "
             "WHERE namespace = ? AND name = ?",
@@ -826,7 +849,7 @@ class Sqlite3Storage:
         )
 
     def get_function_uses(self, name):
-        result = self.__query(
+        result, lastrowid = self.__query(
             "SELECT file_path, line, column, className, functionName "
             "FROM function_uses "
             "WHERE name = ? "
@@ -861,7 +884,7 @@ class Sqlite3Storage:
         return (file_path, line, column, )
 
     def get_all_constants(self):
-        result = self.__query(
+        result, lastrowid = self.__query(
             "SELECT name "
             "FROM constants "
         )
@@ -881,7 +904,7 @@ class Sqlite3Storage:
         )
 
     def get_constant_uses(self, name):
-        result = self.__query(
+        result, lastrowid = self.__query(
             "SELECT file_path, line, column, className, functionName "
             "FROM constant_uses "
             "WHERE name = ? "
@@ -976,36 +999,36 @@ class Sqlite3Storage:
         self._connection.commit()
 
     def removeFile(self, filePath):
-        result = cursor.execute("SELECT id FROM classes WHERE file_path = ?", (filePath, ))
+        result, lastrowid = self.__query("SELECT id FROM classes WHERE file_path = ?", (filePath, ))
         for classId, in result:
-            cursor.execute("DELETE FROM classes_methods         WHERE class_id = ?", (classId, ))
-            cursor.execute("DELETE FROM classes_members         WHERE class_id = ?", (classId, ))
-            cursor.execute("DELETE FROM classes_interfaces_uses WHERE class_id = ?", (classId, ))
-            cursor.execute("DELETE FROM classes_constants       WHERE class_id = ?", (classId, ))
-        cursor.execute("DELETE FROM classes                 WHERE file_path = ?", (filePath, ))
-        cursor.execute("DELETE FROM functions               WHERE file_path = ?", (filePath, ))
-        cursor.execute("DELETE FROM files                   WHERE file_path = ?", (filePath, ))
-        cursor.execute("DELETE FROM classes_member_uses     WHERE file_path = ?", (filePath, ))
-        cursor.execute("DELETE FROM classes_method_uses     WHERE file_path = ?", (filePath, ))
-        cursor.execute("DELETE FROM classes_uses            WHERE file_path = ?", (filePath, ))
-        cursor.execute("DELETE FROM function_uses           WHERE file_path = ?", (filePath, ))
-        #cursor.execute("VACUUM")
+            self.__query("DELETE FROM classes_methods         WHERE class_id = ?", (classId, ))
+            self.__query("DELETE FROM classes_members         WHERE class_id = ?", (classId, ))
+            self.__query("DELETE FROM classes_interfaces_uses WHERE class_id = ?", (classId, ))
+            self.__query("DELETE FROM classes_constants       WHERE class_id = ?", (classId, ))
+        self.__query("DELETE FROM classes                 WHERE file_path = ?", (filePath, ))
+        self.__query("DELETE FROM functions               WHERE file_path = ?", (filePath, ))
+        self.__query("DELETE FROM files                   WHERE file_path = ?", (filePath, ))
+        self.__query("DELETE FROM classes_member_uses     WHERE file_path = ?", (filePath, ))
+        self.__query("DELETE FROM classes_method_uses     WHERE file_path = ?", (filePath, ))
+        self.__query("DELETE FROM classes_uses            WHERE file_path = ?", (filePath, ))
+        self.__query("DELETE FROM function_uses           WHERE file_path = ?", (filePath, ))
+        #self.__query("VACUUM")
         self.__commitAfterXInserts()
 
     def empty(self):
-        cursor.execute("DROP TABLE IF EXISTS classes_members")
-        cursor.execute("DROP TABLE IF EXISTS classes_member_uses")
-        cursor.execute("DROP TABLE IF EXISTS classes_methods")
-        cursor.execute("DROP TABLE IF EXISTS classes_method_uses")
-        cursor.execute("DROP TABLE IF EXISTS classes_interfaces_uses")
-        cursor.execute("DROP TABLE IF EXISTS classes_namespace_name")
-        cursor.execute("DROP TABLE IF EXISTS classes_constants")
-        cursor.execute("DROP TABLE IF EXISTS constants")
-        cursor.execute("DROP TABLE IF EXISTS classes")
-        cursor.execute("DROP TABLE IF EXISTS classes_uses")
-        cursor.execute("DROP TABLE IF EXISTS functions")
-        cursor.execute("DROP TABLE IF EXISTS function_uses")
-        cursor.execute("DROP TABLE IF EXISTS files")
-        cursor.execute("VACUUM")
+        self.__query("DROP TABLE IF EXISTS classes_members")
+        self.__query("DROP TABLE IF EXISTS classes_member_uses")
+        self.__query("DROP TABLE IF EXISTS classes_methods")
+        self.__query("DROP TABLE IF EXISTS classes_method_uses")
+        self.__query("DROP TABLE IF EXISTS classes_interfaces_uses")
+        self.__query("DROP TABLE IF EXISTS classes_namespace_name")
+        self.__query("DROP TABLE IF EXISTS classes_constants")
+        self.__query("DROP TABLE IF EXISTS constants")
+        self.__query("DROP TABLE IF EXISTS classes")
+        self.__query("DROP TABLE IF EXISTS classes_uses")
+        self.__query("DROP TABLE IF EXISTS functions")
+        self.__query("DROP TABLE IF EXISTS function_uses")
+        self.__query("DROP TABLE IF EXISTS files")
+        self.__query("VACUUM")
         self.__create_tables()
         self._connection.commit()

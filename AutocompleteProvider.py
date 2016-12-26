@@ -75,12 +75,24 @@ class AutocompleteProvider(GObject.Object, GtkSource.CompletionProvider):
                 if type(arguments) == list and len(arguments) > 0:
                     argumentsCodes = []
                     for argumentRow in arguments:
-                        if len(argumentRow) > 2:
+                        argumentsCode = None
+                        if type(argumentRow) == str:
+                            if argumentRow[0] != "$":
+                                argumentRow = "$" + argumentRow
+                            argumentsCode = argumentRow
+                        elif len(argumentRow) > 3:
+                            print("######")
+                            print(repr(argumentRow))
+                            print("%%%%%%")
+                            argumentsCode = ""
+
+                        elif len(argumentRow) == 3:
                             argumentType, argumentsCode, argumentDefaultValue = argumentRow
                         elif len(argumentRow) == 2:
                             argumentDefaultValue = None
                             argumentType, argumentsCode = argumentRow
-                        argumentsCodes.append(argumentsCode)
+                        if argumentsCode != None:
+                            argumentsCodes.append(argumentsCode)
                     completion += ", ".join(argumentsCodes)
 
                 completion += ")"

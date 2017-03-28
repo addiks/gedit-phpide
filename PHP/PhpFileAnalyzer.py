@@ -181,6 +181,7 @@ class PhpFileAnalyzer:
                     className = self.get_class_is_in(tokenIndex)
                     declaration = ['member', tokens[tokenIndex][1], className]
 
+        print(["A", declaration])
         return declaration
 
     ### TYPE DETERMINATION
@@ -317,11 +318,10 @@ class PhpFileAnalyzer:
             scopeEndIndex = len(tokens)-1
             scopeBlock = None
             for block in self.__blocks:
-                if len(block)>2 and block[0] < tokenIndex:
-                    if block[2] in ['function', 'method']:
-                        scopeBeginIndex = block[0]
-                        scopeEndIndex   = block[1]
-                        scopeBlock      = block
+                if len(block)>2 and block[0] < tokenIndex and block[1] > tokenIndex and block[2] in ['function', 'method']:
+                    scopeBeginIndex = block[0]
+                    scopeEndIndex   = block[1]
+                    scopeBlock      = block
 
             # try to find declaration in comments ( // @var $foo \Bar)
             for tokenId, phpcode, line, column in self.__comments:

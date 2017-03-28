@@ -27,7 +27,7 @@ T_COMMENT     = token_num('T_COMMENT')
 
 def parse_php_tokens(tokens):
 
-    blocks, classes, classconstants, variables, constants, functions, namespace, use_statements, use_statement_index, uses = __find_blocks_classes_functions(tokens)
+    blocks, classes, classconstants, variables, constants, functions, namespace, use_statements, use_statement_index, uses, traitUses = __find_blocks_classes_functions(tokens)
 
     blocks.sort(key=operator.itemgetter(0))
 
@@ -42,7 +42,7 @@ def parse_php_tokens(tokens):
 
     members = __extract_members_from_variables(blocks, tokens, variables)
 
-    blocks  = __enrich_classes_functions(blocks, tokens, members, classconstants)
+    blocks  = __enrich_classes_functions(blocks, tokens, members, classconstants, traitUses)
     blocks  = __enrich_methods(blocks, tokens)
     blocks  = __assign_uses_to_blocks(blocks, uses)
 
@@ -63,6 +63,7 @@ def __find_blocks_classes_functions(tokens):
     use_statements = {}
     use_statement_index = None
     uses = []
+    traitUses = []
 
     tokenIndex = 0
     for token in tokens:
@@ -73,18 +74,26 @@ def __find_blocks_classes_functions(tokens):
                 if use_statement_index == None:
                     use_statement_index = tokenIndex+2;
 
-        if token[1] == 'use' and len(blockStack) <= 0:
-            if tokens[tokenIndex+1][0] == T_STRING:
-                use_statement = tokens[tokenIndex+1][1]
-                if use_statement[-1] != '\\':
-                    use_statement = '\\' + use_statement
-                use_parts = use_statement.split("\\")
-                if tokens[tokenIndex+2][1] == 'as' and tokens[tokenIndex+3][0] == T_STRING:
-                    use_alias = tokens[tokenIndex+3][1]
-                else:
-                    use_alias = use_parts[-1]
-                use_statements[use_alias] = use_statement
-                use_statement_index = tokenIndex+2;
+        if token[1] == 'use':
+            if len(blockStack) <= 0: # use-statement
+                if tokens[tokenIndex+1][0] == T_STRING:
+                    use_statement = tokens[tokenIndex+1][1]
+                    if use_statement[-1] != '\\':
+                        use_statement = '\\' + use_statement
+                    use_parts = use_statement.split("\\")
+                    if tokens[tokenIndex+2][1] == 'as' and tokens[tokenIndex+3][0] == T_STRING:
+                        use_alias = tokens[tokenIndex+3][1]
+                    else:
+                        use_alias = use_parts[-1]
+                    use_statements[use_alias] = use_statement
+                    use_statement_index = tokenIndex+2;
+
+            else: # trait-usage
+                if tokens[tokenIndex+1][0] == T_STRING:
+                    traitUses.append([
+                        tokenIndex,
+                        tokens[tokenIndex+1][1]
+                    ])
 
         if token[1] in ['class', 'interface', 'trait']:
             if tokens[tokenIndex-1][1] != '::':
@@ -141,7 +150,7 @@ def __find_blocks_classes_functions(tokens):
                 uses.append([tokenIndex, token[2], token[3], tokenText, typeRef])
         tokenIndex += 1
 
-    return blocks, classes, classconstants, variables, constants, functions, namespace, use_statements, use_statement_index, uses
+    return blocks, classes, classconstants, variables, constants, functions, namespace, use_statements, use_statement_index, uses, traitUses
 
 
 def __assign_classes_to_codeblocks(blocks, classes):
@@ -198,12 +207,12 @@ def __extract_members_from_variables(blocks, tokens, variables):
     return members
 
 
-def __enrich_classes_functions(blocks, tokens, members, classconstants):
+def __enrich_classes_functions(blocks, tokens, members, classconstants, traitUses):
     # enrich classes/functions
     for block in blocks:
         if len(block) > 2:
 
-            if block[2] == 'class':
+            if block[2] in ['class', 'trait']:
                 tokenIndex  = block[3]
                 classType   = tokens[tokenIndex][1]
                 tokenIndex -= 1
@@ -249,6 +258,11 @@ def __enrich_classes_functions(blocks, tokens, members, classconstants):
                     if constantIndex > block[0] and constantIndex < block[1]:
                         thisclassConstants.append(constantIndex)
 
+                thisclassTraits = []
+                for traitTokenIndex, traitName in traitUses:
+                    if traitTokenIndex > block[0] and traitTokenIndex < block[1]:
+                        thisclassTraits.append(traitName)
+
                 block.append(className)             # 4
                 block.append(parentClass)           # 5
                 block.append(interfaces)            # 6
@@ -258,6 +272,7 @@ def __enrich_classes_functions(blocks, tokens, members, classconstants):
                 block.append(thisclassMembers)      # 10
                 block.append(thisclassConstants)    # 11
                 block.append(docComment)            # 12
+                block.append(thisclassTraits)       # 13
 
             if block[2] == 'function':
                 tokenIndex  = block[3]

@@ -260,10 +260,17 @@ class AutocompleteProvider(GObject.Object, GtkSource.CompletionProvider):
             className = returnType
             members = []
             parentClassName = className
+
             while True:
                 namespace, parentClassName = get_namespace_by_classname(parentClassName)
-                methods   += storage.get_class_methods(namespace, parentClassName)
-                members   += storage.get_class_members(namespace, parentClassName)
+
+                for traitClassName in storage.get_class_traits(namespace, parentClassName, True):
+                    namespace, traitClassName = get_namespace_by_classname(traitClassName)
+                    methods += storage.get_class_methods(namespace, traitClassName)
+                    members += storage.get_class_members(namespace, traitClassName)
+
+                methods += storage.get_class_methods(namespace, parentClassName)
+                members += storage.get_class_members(namespace, parentClassName)
                 parentClassName = storage.get_class_parent(namespace, parentClassName)
                 if parentClassName == None:
                     break

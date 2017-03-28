@@ -122,7 +122,7 @@ class AddiksPhpIndexView(GObject.Object, Gedit.ViewActivatable):
 
                             if isFirstUsage:
                                 # added a new variable, add a doc-comment for that
-                                commentCode = indention + "/* @var " + variableName + " mixed */\n"
+                                commentCode = indention + "/* @var mixed " + variableName + " */\n"
                                 GLib.idle_add(self.do_textbuffer_insert, document, line, 0, commentCode)
 
                 if insertedText in [';', '}']:
@@ -197,8 +197,18 @@ class AddiksPhpIndexView(GObject.Object, Gedit.ViewActivatable):
             return self.on_index_not_build()
         line, column = self.get_current_cursor_position()
         if line != None and column != None:
-            filePath, line, column = self.get_php_fileindex().get_declared_position_by_position(line, column)
-            self.open_by_position(filePath, line, column)
+            filePath, lineB, columnB = self.get_php_fileindex().get_declared_position_by_position(line, column)
+            if filePath == 'INTERNAL':
+                decType, name, className = self.get_php_fileindex().get_declaration_by_position(line, column)
+                componentName = name
+                if className != None:
+                    componentName = className
+                if componentName != None:
+                    url = "https://secure.php.net/" + str(componentName);
+                    os.system("xdg-open '"+url+"'")
+
+            else:
+                self.open_by_position(filePath, lineB, columnB)
 
     def on_search_index(self, action, data=None):
         if not self.is_index_built():

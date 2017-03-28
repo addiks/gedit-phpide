@@ -123,6 +123,13 @@ class Sqlite3Storage:
             ")"
         );
         cursor.execute(
+            "CREATE TABLE IF NOT EXISTS classes_trait_uses("
+                "id          INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
+                "class_id    INTEGER NOT NULL, "
+                "name        VARCHAR(128)"
+            ")"
+        );
+        cursor.execute(
             "CREATE TABLE IF NOT EXISTS classes_constants("
                 "id          INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
                 "file_path   VARCHAR(512) NOT NULL, "
@@ -275,7 +282,7 @@ class Sqlite3Storage:
 
     ### CLASSES ###
 
-    def add_class(self, filePath, namespace, className, classType, parentName, interfaces, isFinal, isAbstract, docComment, line, column):
+    def add_class(self, filePath, namespace, className, classType, parentName, interfaces, traits, isFinal, isAbstract, docComment, line, column):
         while len(namespace)>0 and namespace[0] == '\\':
             namespace = namespace[1:]
         result, lastrowid = self.__query(
@@ -289,6 +296,13 @@ class Sqlite3Storage:
                 "INSERT INTO classes_interfaces_uses (class_id, name) "
                 "VALUES (?, ?)",
                 (classId, interface, )
+            )
+            self.__commitAfterXInserts()
+        for trait in traits:
+            self.__query(
+                "INSERT INTO classes_trait_uses (class_id, name) "
+                "VALUES (?, ?)",
+                (classId, trait, )
             )
             self.__commitAfterXInserts()
         self.__commitAfterXInserts()
@@ -384,6 +398,21 @@ class Sqlite3Storage:
         for rowId, interfaceName in result:
             interfaces.append(interfaceName)
         return interfaces
+
+    def get_class_traits(self, namespace, className, recursive=True):
+        traits = []
+        classId, filePath = self.get_class_id(namespace, className)
+        result, lastrowid = self.__query(
+            "SELECT t.id, t.name "
+            "FROM classes_trait_uses t "
+            "WHERE t.class_id=?",
+            (classId, )
+        )
+        for rowId, traitName in result:
+            traits.append(traitName)
+            if recursive:
+                pass # TODO
+        return traits;
 
     def get_all_classnames(self, withNamespaces=True):
         classNames = []
@@ -568,7 +597,7 @@ class Sqlite3Storage:
             namespace = namespace[1:]
         visibility, is_static, line, column, doccomment = (None, None, None, None, None, )
         classId, filePath = self.get_class_id(namespace, className)
-        self.__query(
+        result, lastrowid = self.__query(
             "SELECT visibility, is_static, line, column, doccomment "
             "FROM classes_methods "
             "WHERE class_id=? and name=?",
@@ -655,7 +684,7 @@ class Sqlite3Storage:
     def get_member(self, namespace, className, memberName):
         visibility, is_static, line, column, doccomment, typeHint = (None, None, None, None, None, None)
         classId, filePath = self.get_class_id(namespace, className)
-        self.__query(
+        result, lastrowid = self.__query(
             "SELECT visibility, is_static, line, column, doccomment, type_hint "
             "FROM classes_members "
             "WHERE class_id=? and name=?",
@@ -805,7 +834,7 @@ class Sqlite3Storage:
         while len(namespace)>0 and namespace[0] == '\\':
             namespace = namespace[1:]
         file_path, line, column = (None, None, None, )
-        self.__query(
+        result, lastrowid = self.__query(
             "SELECT file_path, line, column "
             "FROM functions "
             "WHERE namespace=? AND name=?",
@@ -976,7 +1005,7 @@ class Sqlite3Storage:
                 sqlConditions.append("(" + " OR ".join(sqlTermConditions) + ")")
 
             sqlStatement = "SELECT "+selectPart+" FROM "+tableName+" WHERE "+ " AND ".join(sqlConditions)
-            for path, line, column, title in self.__query(sqlStatement):
+            for path, line, column, title in self.__query(sqlStatement)[0]:
                 titleLength = 0
                 if title is str:
                     titleLength = len(title)
@@ -1004,6 +1033,7 @@ class Sqlite3Storage:
             self.__query("DELETE FROM classes_methods         WHERE class_id = ?", (classId, ))
             self.__query("DELETE FROM classes_members         WHERE class_id = ?", (classId, ))
             self.__query("DELETE FROM classes_interfaces_uses WHERE class_id = ?", (classId, ))
+            self.__query("DELETE FROM classes_trait_uses      WHERE class_id = ?", (classId, ))
             self.__query("DELETE FROM classes_constants       WHERE class_id = ?", (classId, ))
         self.__query("DELETE FROM classes                 WHERE file_path = ?", (filePath, ))
         self.__query("DELETE FROM functions               WHERE file_path = ?", (filePath, ))
@@ -1021,6 +1051,7 @@ class Sqlite3Storage:
         self.__query("DROP TABLE IF EXISTS classes_methods")
         self.__query("DROP TABLE IF EXISTS classes_method_uses")
         self.__query("DROP TABLE IF EXISTS classes_interfaces_uses")
+        self.__query("DROP TABLE IF EXISTS classes_trait_uses")
         self.__query("DROP TABLE IF EXISTS classes_namespace_name")
         self.__query("DROP TABLE IF EXISTS classes_constants")
         self.__query("DROP TABLE IF EXISTS constants")

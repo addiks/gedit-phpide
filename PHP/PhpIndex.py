@@ -153,9 +153,10 @@ class PhpIndex:
             elif typeName in ['class', 'interface', 'trait']:
                 typeName, className, classType, parentName, interfaces, isFinal, isAbstract, docComment = row
                 interfaces = interfaces.split(",")
+                traits = []
                 isFinal = (isFinal == "true")
                 isAbstract = (isAbstract == "true")
-                storage.add_class("INTERNAL", namespace, className, classType, parentName, interfaces, isFinal, isAbstract, docComment, 0, 0)
+                storage.add_class("INTERNAL", namespace, className, classType, parentName, interfaces, traits, isFinal, isAbstract, docComment, 0, 0)
 
             elif typeName == 'member':
                 typeName, memberName, className, isStatic, visibility, docComment = row
@@ -279,7 +280,8 @@ class PhpIndex:
                     members        = block[10]
                     classconstants = block[11]
                     docComment     = block[12]
-                    uses           = block[13]
+                    traits         = block[13]
+                    uses           = block[14]
                     line   = tokens[tokenIndex][2]
                     column = tokens[tokenIndex][3]
 
@@ -297,11 +299,26 @@ class PhpIndex:
                         if interface in use_statements:
                             interface = use_statements[interface]
                         if interface[0] != '\\':
-                            interface = "\\" + namespace + "\\" + interface
+                            if namespace != "\\":
+                                interface = "\\" + namespace + "\\" + interface
+                            else:
+                                interface = "\\" + interface
                         cleanedInterfaces.append(interface)
                     interfaces = cleanedInterfaces
 
-                    self._storage.add_class(filePath, namespace, className, classType, parentName, interfaces, isFinal, isAbstract, docComment, line, column)
+                    cleanedTraits = []
+                    for trait in traits:
+                        if trait in use_statements:
+                            trait = use_statements[trait]
+                        if trait[0] != '\\':
+                            if namespace != "\\":
+                                trait = "\\" + namespace + "\\" + trait
+                            else:
+                                trait = "\\" + trait
+                        cleanedTraits.append(trait)
+                    traits = cleanedTraits
+
+                    self._storage.add_class(filePath, namespace, className, classType, parentName, interfaces, traits, isFinal, isAbstract, docComment, line, column)
 
                     for constTokenIndex in classconstants:
                         constantName   = tokens[constTokenIndex+1][1]

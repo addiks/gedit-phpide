@@ -16,6 +16,9 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import gi
+gi.require_version('Gtk', '3.0')
+
 from gi.repository import Gtk, Gdk
 from PHP.PhpIndex import PhpIndex
 from _thread import start_new_thread
@@ -80,4 +83,3 @@ def update_gtk(index_filepath, folder_path, indexPathManager=None):
 def build_gtk(index_filepath, folder_path, indexPathManager=None):
     index = __prepare_gtk_process_window(index_filepath, folder_path, "Rebuilding PHP-Index...", indexPathManager)
     start_new_thread(index.build, (folder_path, ))
-

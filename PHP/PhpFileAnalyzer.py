@@ -191,8 +191,10 @@ class PhpFileAnalyzer:
         if memberName[0] != "$":
             memberName = "$" + memberName
         namespace, className = get_namespace_by_classname(className)
-        visibility, is_static, filePath, line, column, docComment = self.__storage.get_member(namespace, className, memberName)
-        if docComment != None and len(docComment)>0:
+        visibility, is_static, filePath, line, column, docComment, typeHint = self.__storage.get_member(namespace, className, memberName)
+        if typeHint != None and len(typeHint) > 0:
+            typeId = typeHint
+        elif docComment != None and len(docComment)>0:
             typeId = self.__get_var_type_by_doccomment(docComment)
         typeId = self.map_classname_by_use_statements(typeId)
         return typeId

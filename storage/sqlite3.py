@@ -65,12 +65,13 @@ class Sqlite3Storage:
                 self._queue.task_done()
 
     def __query(self, statement, parameters=None):
+        result = None
         if self._useWorkerThread:
             query = self._queue
             resultContainer = []
             query.put([statement, parameters, resultContainer])
             query.join()
-            return resultContainer.pop()
+            result = resultContainer.pop()
 
         else:
             resultCopy = []
@@ -85,7 +86,8 @@ class Sqlite3Storage:
                     resultCopy.append(row)
             finally:
                 self._lock.release()
-            return [resultCopy, self._cursor.lastrowid]
+            result = [resultCopy, self._cursor.lastrowid]
+        return result
 
     def __create_tables(self):
         cursor = self._cursor
@@ -116,6 +118,9 @@ class Sqlite3Storage:
             "CREATE INDEX IF NOT EXISTS classes_namespace_name ON classes (namespace, name)"
         );
         cursor.execute(
+            "CREATE INDEX IF NOT EXISTS classes_file_path      ON classes (file_path)"
+        );
+        cursor.execute(
             "CREATE TABLE IF NOT EXISTS classes_interfaces_uses("
                 "id          INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
                 "class_id    INTEGER NOT NULL, "
@@ -123,11 +128,17 @@ class Sqlite3Storage:
             ")"
         );
         cursor.execute(
+            "CREATE INDEX IF NOT EXISTS classes_interfaces_uses_class_id ON classes_interfaces_uses (class_id)"
+        );
+        cursor.execute(
             "CREATE TABLE IF NOT EXISTS classes_trait_uses("
                 "id          INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
                 "class_id    INTEGER NOT NULL, "
                 "name        VARCHAR(128)"
             ")"
+        );
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS classes_trait_uses_class_id ON classes_trait_uses (class_id)"
         );
         cursor.execute(
             "CREATE TABLE IF NOT EXISTS classes_constants("
@@ -140,6 +151,12 @@ class Sqlite3Storage:
                 "line        INTEGER, "
                 "column      SMALLINT"
             ")"
+        );
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS classes_constants_file_path ON classes_constants (file_path)"
+        );
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS classes_constants_class_id  ON classes_constants (class_id)"
         );
         cursor.execute(
             "CREATE TABLE IF NOT EXISTS classes_methods("
@@ -156,6 +173,9 @@ class Sqlite3Storage:
             ")"
         );
         cursor.execute(
+            "CREATE INDEX IF NOT EXISTS classes_methods_class_id ON classes_methods (class_id)"
+        );
+        cursor.execute(
             "CREATE TABLE IF NOT EXISTS classes_members("
                 "id          INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
                 "class_id    INTEGER NOT NULL, "
@@ -170,6 +190,9 @@ class Sqlite3Storage:
             ")"
         );
         cursor.execute(
+            "CREATE INDEX IF NOT EXISTS classes_members_class_id ON classes_members (class_id)"
+        );
+        cursor.execute(
             "CREATE TABLE IF NOT EXISTS functions("
                 "id          INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
                 "file_path   VARCHAR(512) NOT NULL, "
@@ -182,6 +205,9 @@ class Sqlite3Storage:
             ")"
         );
         cursor.execute(
+            "CREATE INDEX IF NOT EXISTS functions_file_path ON functions (file_path)"
+        );
+        cursor.execute(
             "CREATE TABLE IF NOT EXISTS constants("
                 "id           INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
                 "file_path    VARCHAR(512) NOT NULL, "
@@ -189,6 +215,9 @@ class Sqlite3Storage:
                 "line         INTEGER, "
                 "column       SMALLINT"
             ")"
+        );
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS constants_file_path ON constants (file_path)"
         );
         cursor.execute(
             "CREATE TABLE IF NOT EXISTS classes_method_uses("
@@ -202,6 +231,9 @@ class Sqlite3Storage:
             ")"
         );
         cursor.execute(
+            "CREATE INDEX IF NOT EXISTS classes_method_uses_file_path ON classes_method_uses (file_path)"
+        );
+        cursor.execute(
             "CREATE TABLE IF NOT EXISTS classes_member_uses("
                 "id           INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
                 "file_path    VARCHAR(512) NOT NULL, "
@@ -211,6 +243,9 @@ class Sqlite3Storage:
                 "className    VARCHAR(128), "
                 "functionName VARCHAR(128)"
             ")"
+        );
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS classes_member_uses_file_path ON classes_member_uses (file_path)"
         );
         cursor.execute(
             "CREATE TABLE IF NOT EXISTS function_uses("
@@ -224,6 +259,9 @@ class Sqlite3Storage:
             ")"
         );
         cursor.execute(
+            "CREATE INDEX IF NOT EXISTS function_uses_file_path ON function_uses (file_path)"
+        );
+        cursor.execute(
             "CREATE TABLE IF NOT EXISTS classes_uses("
                 "id           INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
                 "file_path    VARCHAR(512) NOT NULL, "
@@ -235,6 +273,9 @@ class Sqlite3Storage:
             ")"
         );
         cursor.execute(
+            "CREATE INDEX IF NOT EXISTS classes_uses_file_path ON classes_uses (file_path)"
+        );
+        cursor.execute(
             "CREATE TABLE IF NOT EXISTS constant_uses("
                 "id           INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, "
                 "file_path    VARCHAR(512) NOT NULL, "
@@ -244,6 +285,9 @@ class Sqlite3Storage:
                 "className    VARCHAR(128), "
                 "functionName VARCHAR(128)"
             ")"
+        );
+        cursor.execute(
+            "CREATE INDEX IF NOT EXISTS constant_uses_file_path ON constant_uses (file_path)"
         );
         #self._connection.commit()
 

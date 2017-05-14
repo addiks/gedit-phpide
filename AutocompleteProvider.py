@@ -264,10 +264,11 @@ class AutocompleteProvider(GObject.Object, GtkSource.CompletionProvider):
             while True:
                 namespace, parentClassName = get_namespace_by_classname(parentClassName)
 
-                for traitClassName in storage.get_class_traits(namespace, parentClassName, True):
-                    namespace, traitClassName = get_namespace_by_classname(traitClassName)
-                    methods += storage.get_class_methods(namespace, traitClassName)
-                    members += storage.get_class_members(namespace, traitClassName)
+                traitNamespace = namespace
+                for traitClassName in storage.get_class_traits(traitNamespace, parentClassName, True):
+                    traitNamespace, traitClassName = get_namespace_by_classname(traitClassName)
+                    methods += storage.get_class_methods(traitNamespace, traitClassName)
+                    members += storage.get_class_members(traitNamespace, traitClassName)
 
                 methods += storage.get_class_methods(namespace, parentClassName)
                 members += storage.get_class_members(namespace, parentClassName)

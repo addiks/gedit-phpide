@@ -122,7 +122,7 @@ class AddiksPhpIndexView(GObject.Object, Gedit.ViewActivatable):
 
                             if isFirstUsage:
                                 # added a new variable, add a doc-comment for that
-                                commentCode = indention + "/* @var mixed " + variableName + " */\n"
+                                commentCode = indention + "/** @var mixed " + variableName + " */\n"
                                 GLib.idle_add(self.do_textbuffer_insert, document, line, 0, commentCode)
 
                 if insertedText in [';', '}']:

@@ -215,7 +215,7 @@ class AutocompleteProvider(GObject.Object, GtkSource.CompletionProvider):
         tokenIndex = fileIndex.get_token_index_by_position(line, column)
 
         word = ""
-        if tokens[tokenIndex][0] == T_COMMENT:
+        if tokens[tokenIndex][0] in [T_COMMENT, T_DOC_COMMENT]:
             lineInComment = line - tokens[tokenIndex][2]
             columnInComment = column - tokens[tokenIndex][3] - 1
             commentLines = tokens[tokenIndex][1].split("\n")

@@ -77,7 +77,7 @@ class AutocompleteProvider(GObject.Object, GtkSource.CompletionProvider):
                     for argumentRow in arguments:
                         argumentsCode = None
                         if type(argumentRow) == str:
-                            if argumentRow[0] != "$":
+                            if len(argumentRow) > 0 and argumentRow[0] != "$":
                                 argumentRow = "$" + argumentRow
                             argumentsCode = argumentRow
                         elif len(argumentRow) > 3:

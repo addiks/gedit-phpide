@@ -61,12 +61,12 @@ class AddiksPhpIndexApp(GObject.Object, Gedit.AppActivatable, PeasGtk.Configurab
     def do_activate(self):
         AddiksPhpIndexApp.__instance = self
 
-        if "extend_menu" in dir(self): # build menu for gedit 3.12 (one menu per application)
-            submenu = Gio.Menu()
-            item = Gio.MenuItem.new_submenu(_("PHP"), submenu)
+        # Gedit.App
+        app = self.app
 
-            mainMenu = self.app.get_menubar()
-            mainMenu.append_item(item)
+        if "extend_menu" in dir(self): # build menu for gedit 3.12+ (one menu per application)
+            submenu = Gio.Menu()
+            phpMenuItem = Gio.MenuItem.new_submenu(_("PHP"), submenu)
 
             for actionName, title, shortcut, callbackName in ACTIONS:
                 if callbackName != None:
@@ -75,6 +75,22 @@ class AddiksPhpIndexApp(GObject.Object, Gedit.AppActivatable, PeasGtk.Configurab
                         item.set_attribute_value("accel", GLib.Variant.new_string(shortcut))
                         self.app.set_accels_for_action("win.%s" % actionName, [shortcut])
                     submenu.append_item(item)
+
+            mainMenu = self.app.get_menubar()
+            if mainMenu is not None:
+                mainMenu.append_item(phpMenuItem)
+
+            else:
+                toolsMenu = self.extend_menu("tools-section")
+                if toolsMenu is not None:
+                    toolsMenu.prepend_menu_item(phpMenuItem)
+
+            # This works for gedit 3.22; it add's PHP menu to app-menu in the top-bar
+            # (Not really how i want it to work, but it's the only way that i got the menu working in 3.22)
+            if "get_app_menu" in dir(app):
+                appMenu = app.get_app_menu()
+                if appMenu is not None:
+                    appMenu.append_item(phpMenuItem)
 
     def get_settings(self):
         return self._settings

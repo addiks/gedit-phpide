@@ -202,13 +202,56 @@ class AddiksPhpGladeHandler:
 
     def onExportGraphMLWindowShown(self, window, userData=None):
         plugin = self._plugin
+
         executionPatternEntry = self._builder.get_object('entryGraphMLExecutionPattern')
+
+        treeViewAvailable = self._builder.get_object('treeviewExportGraphMLAvailable')
+        treeViewSelected  = self._builder.get_object('treeviewExportGraphMLSelected')
+        treeViewExcluded  = self._builder.get_object('treeviewExportGraphMLExcluded')
+
+        treeViewAvailable.connect("drag-data-get", self.onTreeViewAvailableDragDataGet)
+        treeViewAvailable.enable_model_drag_source(
+            Gdk.ModifierType.BUTTON1_MASK,
+            [],
+            Gdk.DragAction.COPY
+        )
+        treeViewAvailable.drag_source_add_text_targets()
+
+        treeViewSelected.connect("drag-data-received", self.onTreeViewSelectedDragDataReceived)
+        treeViewSelected.enable_model_drag_dest(
+            [],
+            Gdk.DragAction.COPY
+        )
+        treeViewSelected.drag_dest_add_text_targets()
+
+        treeViewExcluded.connect("drag-data-received", self.onTreeViewSelectedDragDataReceived)
+        treeViewExcluded.enable_model_drag_dest(
+            [],
+            Gdk.DragAction.COPY
+        )
+        treeViewExcluded.drag_dest_add_text_targets()
 
         settings = plugin.get_settings()
 
         commandPattern = settings.get_string("graphml-execute-pattern")
 
         executionPatternEntry.set_text(commandPattern)
+
+    def onTreeViewAvailableDragDataGet(self, treeView, dragContext, data, info, time):
+        selection = treeView.get_selection()
+        store, selected_rows = selection.get_selected_rows()
+        listStore = treeView.get_model()
+
+        for path in selected_rows:
+            treeIter  = listStore.get_iter(path)
+            classname = listStore.get_value(treeIter, 0)
+            data.set_text(classname, -1)
+
+    def onTreeViewSelectedDragDataReceived(self, treeView, dragContext, x, y, data, info, time):
+        classname = data.get_text()
+        liststore = treeView.get_model()
+        rowIterSelected = liststore.append()
+        liststore.set_value(rowIterSelected, 0, classname)
 
     def onExportGraphMLAvailableChanged(self, searchEntry, userData=None):
         searchText = searchEntry.get_text()
@@ -238,14 +281,15 @@ class AddiksPhpGladeHandler:
         rowIterSelected = listStoreSelected.append()
         listStoreSelected.set_value(rowIterSelected, 0, classname)
 
-    def onExportGraphMLSelectedRowActivated(self, treeView, treePath, treeViewColumn, userData=None):
-        listStore = self._builder.get_object('liststoreExportGraphMLSelected')
+    def onExportGraphMLRowActivatedRemove(self, treeView, treePath, treeViewColumn, userData=None):
+        listStore = treeView.get_model()
 
         rowIter = listStore.get_iter(treePath)
         listStore.remove(rowIter)
 
     def onExportGraphMLExecute(self, button, userData=None):
-        listStore = self._builder.get_object('liststoreExportGraphMLSelected')
+        listStoreSelected = self._builder.get_object('liststoreExportGraphMLSelected')
+        listStoreExcluded = self._builder.get_object('liststoreExportGraphMLExcluded')
         depthAdjustment = self._builder.get_object('adjustmentExportGraphMLDepth')
 
         depth = int(depthAdjustment.get_value())
@@ -257,21 +301,51 @@ class AddiksPhpGladeHandler:
                 break
             counter += 1
 
-        classes = []
-        for modelRow in listStore:
+        classesSelected = []
+        for modelRow in listStoreSelected:
             rowIter = modelRow.iter
-            classes.append(listStore.get_value(rowIter, 0))
+            classesSelected.append(listStoreSelected.get_value(rowIter, 0))
 
-        start_new_thread(self._do_ExportGraphMLExecute, (classes, filePath, depth))
+        classesExcluded = []
+        for modelRow in listStoreExcluded:
+            rowIter = modelRow.iter
+            classesExcluded.append(listStoreExcluded.get_value(rowIter, 0))
 
-    def _do_ExportGraphMLExecute(self, classes, filePath, depth):
+        optionObjectMap = [
+            ("contain_methods", "checkbuttonGraphMLContainMethods"),
+            ("contain_members", "checkbuttonGraphMLContainMembers"),
+            ("include_parental_inheritance", "checkbuttonGraphMLIncludeParentalInheritanceRelations"),
+            ("include_children_inheritance", "checkbuttonGraphMLIncludeChildrenInheritanceRelations"),
+            ("include_interfaces", "checkbuttonGraphMLIncludeInterfaceRelations"),
+            ("include_has_a_composition", "checkbuttonGraphMLIncludeHasACompositionRelations"),
+            ("include_is_part_of_composition", "checkbuttonGraphMLIncludeIsPartOfCompositionRelations"),
+            ("include_uses_references", "checkbuttonGraphMLIncludeUsesRelations"),
+            ("include_usedby_references", "checkbuttonGraphMLIncludeUsedByRelations"),
+        ]
+
+        options = {}
+
+        for optionKey, objectId in optionObjectMap:
+            options[optionKey] = self._builder.get_object(objectId).get_active()
+
+        start_new_thread(self._do_ExportGraphMLExecute, (classesSelected, classesExcluded, filePath, depth, options))
+
+    def _do_ExportGraphMLExecute(self, classesSelected, classesExcluded, filePath, depth, options={}):
         plugin = self._plugin
         storage = plugin.create_index_storage()
 
         executionPatternEntry = self._builder.get_object('entryGraphMLExecutionPattern')
 
         exporter = GraphMLExporter()
-        exporter.exportClassGraphhToFile(plugin, storage, classes, filePath, depth)
+        exporter.exportClassGraphhToFile(
+            plugin,
+            storage,
+            classesSelected,
+            filePath,
+            depth,
+            classesExcluded,
+            options
+        )
 
         commandPattern = executionPatternEntry.get_text()
         commandLine = commandPattern % filePath
@@ -284,5 +358,3 @@ class AddiksPhpGladeHandler:
 
         sp = subprocess.Popen(command, stdin=PIPE, stdout=PIPE, stderr=PIPE)
         sp.wait()
-
-        os.remove(filePath)

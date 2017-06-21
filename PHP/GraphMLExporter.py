@@ -31,7 +31,16 @@ class GraphMLExporter:
         self.xsi   = "{%s}" % self.xsi_namespace
         self.y     = "{%s}" % self.y_namespace
 
-    def exportClassGraphhToFile(self, plugin, storage, classes, filePath, depth=0):
+    def exportClassGraphhToFile(
+        self,
+        plugin,
+        storage,
+        classes,
+        filePath,
+        depth=0,
+        classesExcluded=[],
+        options = {}
+    ):
 
         ### FETCH NODES AND EDGES BY DEPTH
 
@@ -44,17 +53,24 @@ class GraphMLExporter:
             cleanedClasses.append(className)
         classes = cleanedClasses
 
+        cleanedClassesExcluded = []
+        for className in classesExcluded:
+            className = self.__clearClassName(className)
+            cleanedClassesExcluded.append(className)
+        classesExcluded = cleanedClassesExcluded
+
         if depth > 0:
             lastAddedClasses = classes
             while depth > 0:
                 classesToAdd = []
                 for className in lastAddedClasses:
-                    nodes, edges = self._fetchRelatedEdges(className, plugin, storage)
-                    allNodes += nodes
-                    allEdges += edges
-                    for node in nodes:
-                        nodeClassName, nodeType = node.split('@')
-                        classesToAdd.append(nodeClassName)
+                    if className not in classesExcluded:
+                        nodes, edges = self._fetchRelatedEdges(className, plugin, storage, options)
+                        allNodes += nodes
+                        allEdges += edges
+                        for node in nodes:
+                            nodeClassName, nodeType = node.split('@')
+                            classesToAdd.append(nodeClassName)
                 classes += classesToAdd
                 classes = list(set(classes))
                 lastAddedClasses = list(set(classesToAdd))
@@ -123,29 +139,31 @@ class GraphMLExporter:
 
                 bodyText = ""
 
-                for methodName in storage.get_all_class_methods(namespace, className):
-                    methodData = storage.get_method(namespace, className, methodName)
-                    visibility, is_static, methodFilePath, line, column, doccomment = methodData
-                    methodPrefix = "+"
-                    if visibility == "protected":
-                        methodPrefix = "#"
-                    if visibility == "private":
-                        methodPrefix = "-"
-                    methodReturnTypeDef = ""
-                    bodyText += methodPrefix + " " + methodName + methodReturnTypeDef + "()\n"
+                if "contain_methods" not in options or options["contain_methods"]:
+                    for methodName in storage.get_all_class_methods(namespace, className):
+                        methodData = storage.get_method(namespace, className, methodName)
+                        visibility, is_static, methodFilePath, line, column, doccomment = methodData
+                        methodPrefix = "+"
+                        if visibility == "protected":
+                            methodPrefix = "#"
+                        if visibility == "private":
+                            methodPrefix = "-"
+                        methodReturnTypeDef = ""
+                        bodyText += methodPrefix + " " + methodName + methodReturnTypeDef + "()\n"
 
-                for memberName in storage.get_all_class_members(namespace, className):
-                    memberData = storage.get_member(namespace, className, memberName)
-                    visibility, is_static, memberFilePath, line, column, doccomment, typeHint = memberData
-                    memberPrefix = "+"
-                    if visibility == "protected":
-                        memberPrefix = "#"
-                    if visibility == "private":
-                        memberPrefix = "-"
-                    memberTypeDef = ""
-                    if typeHint != None:
-                        memberTypeDef = " : " + typeHint
-                    bodyText += memberPrefix + " " + memberName + memberTypeDef + "\n"
+                if "contain_members" not in options or options["contain_members"]:
+                    for memberName in storage.get_all_class_members(namespace, className):
+                        memberData = storage.get_member(namespace, className, memberName)
+                        visibility, is_static, memberFilePath, line, column, doccomment, typeHint = memberData
+                        memberPrefix = "+"
+                        if visibility == "protected":
+                            memberPrefix = "#"
+                        if visibility == "private":
+                            memberPrefix = "-"
+                        memberTypeDef = ""
+                        if typeHint != None:
+                            memberTypeDef = " : " + typeHint
+                        bodyText += memberPrefix + " " + memberName + memberTypeDef + "\n"
 
                 classFilePath, classLine, classColumn = storage.get_class_position(namespace, className)
 
@@ -393,7 +411,7 @@ class GraphMLExporter:
             couplingByNode[node] = coupling
         return couplingByNode
 
-    def _fetchRelatedEdges(self, fullClassName, plugin, storage):
+    def _fetchRelatedEdges(self, fullClassName, plugin, storage, options={}):
         nodes = []
         edges = []
 
@@ -403,59 +421,70 @@ class GraphMLExporter:
 
         classes = [fullClassName]
 
-        ### PARENT / CHILDREN
-
-        parentClassName = storage.get_class_parent(namespace, className)
-        if parentClassName != None:
-            parentClassName = self.__clearClassName(parentClassName)
-            classes.append(parentClassName)
-            edges.append(fullClassName + "-generalization-" + parentClassName)
-
-        children = storage.get_class_children(fullClassName)
-        for childClassName in children:
-            childClassName = self.__clearClassName(childClassName)
-            classes.append(childClassName)
-            edges.append(childClassName + "-generalization-" + fullClassName)
-
         ### INTERFACES
 
-        interfaces = storage.get_class_interfaces(namespace, className)
-        for interface in interfaces:
-            interface = self.__clearClassName(interface)
-            classes.append(interface)
-            edges.append(fullClassName + "-implementation-" + interface)
+        interfacesImplemented = []
+
+        if "include_interfaces" not in options or options["include_interfaces"]:
+            interfaces = storage.get_class_interfaces(namespace, className)
+            for interface in interfaces:
+                interface = self.__clearClassName(interface)
+                interfacesImplemented.append(interface)
+                classes.append(interface)
+                edges.append(fullClassName + "-implementation-" + interface)
+
+        ### PARENT / CHILDREN
+
+        if "include_parental_inheritance" not in options or options["include_parental_inheritance"]:
+            parentClassName = storage.get_class_parent(namespace, className)
+            if parentClassName != None:
+                parentClassName = self.__clearClassName(parentClassName)
+                classes.append(parentClassName)
+                edges.append(fullClassName + "-generalization-" + parentClassName)
+
+        if "include_children_inheritance" not in options or options["include_children_inheritance"]:
+            children = storage.get_class_children(fullClassName)
+            for childClassName in children:
+                childClassName = self.__clearClassName(childClassName)
+                if childClassName not in interfacesImplemented:
+                    classes.append(childClassName)
+                    edges.append(childClassName + "-generalization-" + fullClassName)
 
         ### COMPOSITIONS & AGGREGATIONS
 
-        members = storage.get_all_class_members(namespace, className)
-        for memberName in members:
-            memberData = storage.get_member(namespace, className, memberName)
-            typeHint = memberData[6]
-            if typeHint != None and len(typeHint) > 0:
-                typeHint = self.__clearClassName(typeHint)
-                classes.append(typeHint)
-                edges.append(fullClassName + "-composition-" + typeHint)
+        if "include_has_a_composition" not in options or options["include_has_a_composition"]:
+            members = storage.get_all_class_members(namespace, className)
+            for memberName in members:
+                memberData = storage.get_member(namespace, className, memberName)
+                typeHint = memberData[6]
+                if typeHint != None and len(typeHint) > 0:
+                    typeHint = self.__clearClassName(typeHint)
+                    classes.append(typeHint)
+                    edges.append(fullClassName + "-composition-" + typeHint)
 
-        members = storage.get_members_by_type_hint(namespace, className)
-        for memberNamespace, memberClassname, memberName in members:
-            memberFullClassname = memberNamespace + "\\" + memberClassname
-            memberFullClassname = self.__clearClassName(memberFullClassname)
-            classes.append(memberFullClassname)
-            edges.append(memberFullClassname + "-composition-" + fullClassName)
+        if "include_is_part_of_composition" not in options or options["include_is_part_of_composition"]:
+            members = storage.get_members_by_type_hint(namespace, className)
+            for memberNamespace, memberClassname, memberName in members:
+                memberFullClassname = memberNamespace + "\\" + memberClassname
+                memberFullClassname = self.__clearClassName(memberFullClassname)
+                classes.append(memberFullClassname)
+                edges.append(memberFullClassname + "-composition-" + fullClassName)
 
         ### REFERENCES
 
-        uses = storage.get_class_uses(fullClassName)
-        for usingFilePath, line, column, usingClassName, functionName in uses:
-            usingClassName = self.__clearClassName(usingClassName)
-            classes.append(usingClassName)
-            edges.append(usingClassName + "-association-" + fullClassName)
+        if "include_uses_references" not in options or options["include_uses_references"]:
+            uses = storage.get_class_uses(fullClassName)
+            for usingFilePath, line, column, usingClassName, functionName in uses:
+                usingClassName = self.__clearClassName(usingClassName)
+                classes.append(usingClassName)
+                edges.append(usingClassName + "-association-" + fullClassName)
 
-        uses = storage.get_class_uses_by_class(fullClassName)
-        for usingFilePath, line, column, userClassName, functionName in uses:
-            userClassName = self.__clearClassName(userClassName)
-            classes.append(userClassName)
-            edges.append(fullClassName + "-association-" + userClassName)
+        if "include_usedby_references" not in options or options["include_usedby_references"]:
+            uses = storage.get_class_uses_by_class(fullClassName)
+            for usingFilePath, line, column, userClassName, functionName in uses:
+                userClassName = self.__clearClassName(userClassName)
+                classes.append(userClassName)
+                edges.append(fullClassName + "-association-" + userClassName)
 
         ### BUILD NODES FROM CLASSES
 

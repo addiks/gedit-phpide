@@ -181,7 +181,7 @@ class PhpFileAnalyzer:
                     className = self.get_class_is_in(tokenIndex)
                     declaration = ['member', tokens[tokenIndex][1], className]
 
-        print(["A", declaration])
+#        print(["A", declaration])
         return declaration
 
     ### TYPE DETERMINATION

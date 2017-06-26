@@ -19,7 +19,7 @@ from _thread import start_new_thread
 import re
 
 from .AutocompleteProposal import AutocompleteProposal
-from .AddiksPhpIndexApp import AddiksPhpIndexApp
+from .AddiksPHPIDEApp import AddiksPHPIDEApp
 
 from .PHP.functions import get_namespace_by_classname
 from .PHP.phplexer import token_name, token_num
@@ -164,7 +164,7 @@ class AutocompleteProvider(GObject.Object, GtkSource.CompletionProvider):
         decName = proposal.get_word()
         containingClass = proposal.get_additional_info()
 
-        labelText = AddiksPhpIndexApp.get().build_info_text(storage, decType, decName, containingClass)
+        labelText = AddiksPHPIDEApp.get().build_info_text(storage, decType, decName, containingClass)
 
         GLib.idle_add(self.__do_fill_info_widget, sourceBuffer, infoLabel, proposal, labelText)
 
@@ -177,7 +177,7 @@ class AutocompleteProvider(GObject.Object, GtkSource.CompletionProvider):
         decName = proposal.get_word()
         containingClass = proposal.get_additional_info()
 
-        AddiksPhpIndexApp.get().update_info_window(self.__pluginView, (decType, decName, containingClass))
+        AddiksPHPIDEApp.get().update_info_window(self.__pluginView, (decType, decName, containingClass))
 
     def do_get_name(self):
         if self.type == None:

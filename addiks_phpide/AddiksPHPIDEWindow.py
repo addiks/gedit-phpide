@@ -16,11 +16,11 @@
 
 from gi.repository import Gtk, GObject, Gedit, Gio
 
-from .AddiksPhpIndexApp import AddiksPhpIndexApp, ACTIONS
+from .AddiksPHPIDEApp import AddiksPHPIDEApp, ACTIONS
 
 import os
 
-class AddiksPhpIndexWindow(GObject.Object, Gedit.WindowActivatable):
+class AddiksPHPIDEWindow(GObject.Object, Gedit.WindowActivatable):
     window = GObject.property(type=Gedit.Window)
 
     def __init__(self):
@@ -29,7 +29,7 @@ class AddiksPhpIndexWindow(GObject.Object, Gedit.WindowActivatable):
         self._is_ui_added = False
 
     def do_activate(self):
-        AddiksPhpIndexApp.get().register_window(self)
+        AddiksPHPIDEApp.get().register_window(self)
 
         self._actions = Gtk.ActionGroup("AddiksPhpMenuActions")
         for actionName, title, shortcut, callbackName in ACTIONS:
@@ -50,7 +50,7 @@ class AddiksPhpIndexWindow(GObject.Object, Gedit.WindowActivatable):
         self.do_update_state()
 
     def do_deactivate(self):
-        AddiksPhpIndexApp.get().unregister_window(self)
+        AddiksPHPIDEApp.get().unregister_window(self)
 
     def do_update_state(self):
         document = self.window.get_active_document()
@@ -120,5 +120,5 @@ class AddiksPhpIndexWindow(GObject.Object, Gedit.WindowActivatable):
 
     def get_active_view(self):
         geditView = self.window.get_active_view()
-        pluginView = AddiksPhpIndexApp.get().get_plugin_view_by_gedit_view(geditView)
+        pluginView = AddiksPHPIDEApp.get().get_plugin_view_by_gedit_view(geditView)
         return pluginView

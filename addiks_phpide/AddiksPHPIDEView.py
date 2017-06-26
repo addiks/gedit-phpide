@@ -25,7 +25,7 @@ import time
 import subprocess
 
 from .AutocompleteProvider import AutocompleteProvider
-from .AddiksPhpIndexApp import AddiksPhpIndexApp
+from .AddiksPHPIDEApp import AddiksPHPIDEApp
 from .AddiksPhpGladeHandler import AddiksPhpGladeHandler
 
 from .PHP.functions import get_namespace_by_classname
@@ -40,7 +40,7 @@ T_COMMENT     = token_num("T_COMMENT")
 T_DOC_COMMENT = token_num("T_DOC_COMMENT")
 T_VARIABLE    = token_num("T_VARIABLE")
 
-class AddiksPhpIndexView(GObject.Object, Gedit.ViewActivatable):
+class AddiksPHPIDEView(GObject.Object, Gedit.ViewActivatable):
     view = GObject.property(type=Gedit.View)
 
     def __init__(self):
@@ -53,7 +53,7 @@ class AddiksPhpIndexView(GObject.Object, Gedit.ViewActivatable):
         self._glade_handler = None
 
     def do_activate(self):
-        AddiksPhpIndexApp.get().register_view(self)
+        AddiksPHPIDEApp.get().register_view(self)
 
         completion = self.view.get_completion()
         provider = self.get_completion_provider()
@@ -70,7 +70,7 @@ class AddiksPhpIndexView(GObject.Object, Gedit.ViewActivatable):
         document.connect("saved", self.__on_document_saved)
 
     def do_deactivate(self):
-        AddiksPhpIndexApp.get().unregister_view(self)
+        AddiksPHPIDEApp.get().unregister_view(self)
 
     def do_update_state(self):
         pass
@@ -136,12 +136,12 @@ class AddiksPhpIndexView(GObject.Object, Gedit.ViewActivatable):
                 # new line, add indention
                 GLib.idle_add(self.do_textbuffer_insert, document, line+1, 0, indention)
 
-            AddiksPhpIndexApp.get().update_info_window(self)
+            AddiksPHPIDEApp.get().update_info_window(self)
 
     def __on_document_changed(self, document, userData=None):
         # make sure the php-file-index gets updated when the text get changed
         if document.get_location() != None:
-            AddiksPhpIndexApp.get().update_info_window(self)
+            AddiksPHPIDEApp.get().update_info_window(self)
             filepath = document.get_location().get_path()
             self.invalidate_php_fileindex(filepath)
         return False
@@ -163,7 +163,7 @@ class AddiksPhpIndexView(GObject.Object, Gedit.ViewActivatable):
                 index.reindex_phpfile(filepath)
 
     def get_settings(self):
-        return AddiksPhpIndexApp.get().get_settings()
+        return AddiksPHPIDEApp.get().get_settings()
 
     ### MENU ITEMS
 
@@ -172,7 +172,7 @@ class AddiksPhpIndexView(GObject.Object, Gedit.ViewActivatable):
             window = self.getGladeBuilder().get_object("windowIndexPathsManager")
             window.show_all()
         else:
-            window = AddiksPhpIndexApp.get().get_window_by_view(self).window
+            window = AddiksPHPIDEApp.get().get_window_by_view(self).window
             dialog = Gtk.MessageDialog(window, 0, Gtk.MessageType.ERROR, Gtk.ButtonsType.NONE, "Not a git project!")
             dialog.format_secondary_text("The index-include/-exclude path'scan only be configured for files in a git workspace.")
             dialog.run()
@@ -222,10 +222,10 @@ class AddiksPhpIndexView(GObject.Object, Gedit.ViewActivatable):
     def on_show_info_window(self, action, data=None):
         if not self.is_index_built():
             return self.on_index_not_build()
-        AddiksPhpIndexApp.get().show_info_window(self)
+        AddiksPHPIDEApp.get().show_info_window(self)
 
     def on_textview_move_cursor(self, textView=None, step=None, count=None, extendSelection=None, userData=None):
-        GLib.idle_add(AddiksPhpIndexApp.get().update_info_window, self)
+        GLib.idle_add(AddiksPHPIDEApp.get().update_info_window, self)
 
     def on_open_type_view(self, action, data=None):
         if not self.is_index_built():
@@ -600,7 +600,7 @@ class AddiksPhpIndexView(GObject.Object, Gedit.ViewActivatable):
         return False
 
     def on_index_not_build(self):
-        window = AddiksPhpIndexApp.get().get_window_by_view(self).window
+        window = AddiksPHPIDEApp.get().get_window_by_view(self).window
         dialog = Gtk.MessageDialog(window, 0, Gtk.MessageType.ERROR, Gtk.ButtonsType.NONE, "Build index first!")
         dialog.format_secondary_text("To perform this action, you first need to build the index for this working directory.")
         dialog.run()

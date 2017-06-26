@@ -39,7 +39,7 @@ ACTIONS = [
     ['ManageIndexPathsAction',  "Manage index paths",   "",                "on_index_paths_manager"],
 ]
 
-class AddiksPhpIndexApp(GObject.Object, Gedit.AppActivatable, PeasGtk.Configurable):
+class AddiksPHPIDEApp(GObject.Object, Gedit.AppActivatable, PeasGtk.Configurable):
     app = GObject.property(type=Gedit.App)
     _info_window = None
     _info_buffer = None
@@ -61,7 +61,7 @@ class AddiksPhpIndexApp(GObject.Object, Gedit.AppActivatable, PeasGtk.Configurab
         self._settings = Gio.Settings.new_full(schema, None, None)
 
     def do_activate(self):
-        AddiksPhpIndexApp.__instance = self
+        AddiksPHPIDEApp.__instance = self
 
         # Gedit.App
         app = self.app
@@ -103,9 +103,9 @@ class AddiksPhpIndexApp(GObject.Object, Gedit.AppActivatable, PeasGtk.Configurab
 
     @staticmethod
     def get():
-        if AddiksPhpIndexApp.__instance == None:
-            AddiksPhpIndexApp.__instance = AddiksPhpIndexApp()
-        return AddiksPhpIndexApp.__instance
+        if AddiksPHPIDEApp.__instance == None:
+            AddiksPHPIDEApp.__instance = AddiksPHPIDEApp()
+        return AddiksPHPIDEApp.__instance
 
     ### CONFIGURATION
 

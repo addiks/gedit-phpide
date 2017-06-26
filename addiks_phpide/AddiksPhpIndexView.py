@@ -16,17 +16,6 @@
 
 from gi.repository import GLib, Gtk, GObject, Gedit, PeasGtk, Gio, GtkSource
 
-from PHP.functions import get_namespace_by_classname
-from PHP.PhpFileAnalyzer import PhpFileAnalyzer
-from PHP.PhpIndex import PhpIndex
-from PHP.IndexPathManager import IndexPathManager
-from PHP.phplexer import token_num
-
-from AutocompleteProvider import AutocompleteProvider
-from AddiksPhpIndexApp import AddiksPhpIndexApp
-from AddiksPhpGladeHandler import AddiksPhpGladeHandler
-from update_gtk import update_gtk, build_gtk
-
 from inspect import getmodule
 from _thread import start_new_thread
 
@@ -34,6 +23,18 @@ import os
 import random
 import time
 import subprocess
+
+from .AutocompleteProvider import AutocompleteProvider
+from .AddiksPhpIndexApp import AddiksPhpIndexApp
+from .AddiksPhpGladeHandler import AddiksPhpGladeHandler
+
+from .PHP.functions import get_namespace_by_classname
+from .PHP.PhpFileAnalyzer import PhpFileAnalyzer
+from .PHP.PhpIndex import PhpIndex
+from .PHP.IndexPathManager import IndexPathManager
+from .PHP.phplexer import token_num
+
+from .update_gtk import update_gtk, build_gtk
 
 T_COMMENT     = token_num("T_COMMENT")
 T_DOC_COMMENT = token_num("T_DOC_COMMENT")
@@ -497,7 +498,7 @@ class AddiksPhpIndexView(GObject.Object, Gedit.ViewActivatable):
 
     def __initGlade(self):
         self._glade_builder = Gtk.Builder()
-        self._glade_builder.add_from_file(os.path.dirname(__file__)+"/phpide.glade")
+        self._glade_builder.add_from_file(os.path.dirname(__file__)+"/assets/phpide.glade")
         self._glade_handler = AddiksPhpGladeHandler(self, self._glade_builder)
         self._glade_builder.connect_signals(self._glade_handler)
 
@@ -516,19 +517,19 @@ class AddiksPhpIndexView(GObject.Object, Gedit.ViewActivatable):
             pass
 
         elif indexPath == 'neo4j':
-            from storage.neo4j import Neo4jStorage
+            from .storage.neo4j import Neo4jStorage
             storage = Neo4jStorage()
 
         elif indexPath == 'dummy':
-            from storage.dummy import DummyStorage
+            from .storage.dummy import DummyStorage
             storage = DummyStorage()
 
         elif indexPath.find(".sqlite3")>0:
-            from storage.sqlite3 import Sqlite3Storage
+            from .storage.sqlite3 import Sqlite3Storage
             storage = Sqlite3Storage(indexPath)
 
         elif indexPath.find("/")>0:
-            from storage.shelve import ShelveStorage
+            from .storage.shelve import ShelveStorage
             storage = ShelveStorage(indexPath)
 
         else:

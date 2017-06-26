@@ -17,7 +17,7 @@
 from .phplexer import token_get_all
 from .phplexer import token_name
 from .phplexer import token_num
-import PHP.phplexer
+from .phplexer import keywords
 import operator
 
 T_STRING      = token_num('T_STRING')
@@ -122,7 +122,7 @@ def __find_blocks_classes_functions(tokens):
             beginIndex = blockStack.pop()
             blocks.append([beginIndex, tokenIndex])
 
-        if token[0] == T_STRING and token[1] not in PHP.phplexer.keywords and token[1] != "namespace" and tokens[tokenIndex-1][1] != "namespace":
+        if token[0] == T_STRING and token[1] not in keywords and token[1] != "namespace" and tokens[tokenIndex-1][1] != "namespace":
             isOnClass = (tokens[tokenIndex-1][1] in ['->', '::'])
             isRoutine = (tokens[tokenIndex+1][1] == '(')
             isType = (tokens[tokenIndex+1][0] == T_VARIABLE) or tokens[tokenIndex-1][1] in ['use', 'extends', 'implements', 'new', 'instanceof']

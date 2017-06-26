@@ -20,9 +20,10 @@ import gi
 gi.require_version('Gtk', '3.0')
 
 from gi.repository import Gtk, Gdk
-from PHP.PhpIndex import PhpIndex
 from _thread import start_new_thread
 import sys, os
+
+from .PHP.PhpIndex import PhpIndex
 
 def __prepare_gtk_process_window(index_filepath, folder_path, windowTitle, indexPathManager=None):
 

@@ -114,19 +114,19 @@ class PhpIndex:
         indexPath = self._index_path
 
         if indexPath == 'neo4j':
-            from storage.neo4j import Neo4jStorage
+            from ..storage.neo4j import Neo4jStorage
             self._storage = Neo4jStorage()
 
         elif indexPath == 'dummy':
-            from storage.dummy import DummyStorage
+            from ..storage.dummy import DummyStorage
             self._storage = DummyStorage()
 
         elif indexPath.find(".sqlite3")>0:
-            from storage.sqlite3 import Sqlite3Storage
+            from ..storage.sqlite3 import Sqlite3Storage
             self._storage = Sqlite3Storage(indexPath)
 
         elif indexPath.find("/")>0:
-            from storage.shelve import ShelveStorage
+            from ..storage.shelve import ShelveStorage
             self._storage = ShelveStorage(indexPath)
 
         else:

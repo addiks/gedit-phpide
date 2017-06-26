@@ -17,8 +17,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 import sys
-from PHP.PhpIndex import PhpIndex
-from update_gtk import update_gtk
+from .PHP.PhpIndex import PhpIndex
+from .update_gtk import update_gtk
 
 def update_callback(done_count, all_count, file_path):
     progressStr = str(done_count) + "/" + str(all_count) + " : "

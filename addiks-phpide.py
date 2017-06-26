@@ -14,7 +14,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from AddiksPhpIndexApp import AddiksPhpIndexApp
-from AddiksPhpIndexView import AddiksPhpIndexView
-from AddiksPhpIndexWindow import AddiksPhpIndexWindow
-
+from addiks_phpide.AddiksPhpIndexApp import AddiksPhpIndexApp
+from addiks_phpide.AddiksPhpIndexView import AddiksPhpIndexView
+from addiks_phpide.AddiksPhpIndexWindow import AddiksPhpIndexWindow

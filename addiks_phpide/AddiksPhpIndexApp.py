@@ -18,9 +18,11 @@ import gi
 gi.require_version('Notify', '0.7')
 
 from gi.repository import GLib, Gtk, GtkSource, GObject, Gedit, Gio, Notify, PeasGtk
-from AddiksPhpGladeHandler import AddiksPhpGladeHandler
-from PHP.functions import get_namespace_by_classname
 import os
+
+from .AddiksPhpGladeHandler import AddiksPhpGladeHandler
+
+from .PHP.functions import get_namespace_by_classname
 
 ACTIONS = [
     ['PhpAction',               "PHP",                  "",                None],
@@ -47,11 +49,11 @@ class AddiksPhpIndexApp(GObject.Object, Gedit.AppActivatable, PeasGtk.Configurab
         GObject.Object.__init__(self)
         Notify.init("gedit_addiks_phpide")
 
-        if not os.path.exists(os.path.dirname(__file__)+"/gschemas.compiled"):
+        if not os.path.exists(os.path.dirname(__file__)+"/assets/gschemas.compiled"):
             pass
 
         schema_source = Gio.SettingsSchemaSource.new_from_directory(
-            os.path.dirname(__file__),
+            os.path.dirname(__file__)+"/assets",
             Gio.SettingsSchemaSource.get_default(),
             False,
         )
@@ -108,7 +110,7 @@ class AddiksPhpIndexApp(GObject.Object, Gedit.AppActivatable, PeasGtk.Configurab
     ### CONFIGURATION
 
     def do_create_configure_widget(self):
-        filename = os.path.dirname(__file__)+"/phpide.glade"
+        filename = os.path.dirname(__file__)+"/assets/phpide.glade"
         self._glade_builder = Gtk.Builder()
         self._glade_builder.add_objects_from_file(filename, ["gridConfig"])
         self._glade_handler = AddiksPhpGladeHandler(self, self._glade_builder)

@@ -15,7 +15,8 @@
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from gi.repository import Gtk, GObject, Gedit, Gio
-from AddiksPhpIndexApp import AddiksPhpIndexApp, ACTIONS
+
+from .AddiksPhpIndexApp import AddiksPhpIndexApp, ACTIONS
 
 import os
 
@@ -63,7 +64,7 @@ class AddiksPhpIndexWindow(GObject.Object, Gedit.WindowActivatable):
             elif (path[-4:] == '.php' or path[-6:] == '.phtml') and not self._is_ui_added:
                 self._is_ui_added = True
                 plugin_path = os.path.dirname(__file__)
-                with open(plugin_path + "/menubar.xml", "r", encoding = "ISO-8859-1") as f:
+                with open(plugin_path + "/assets/menubar.xml", "r", encoding = "ISO-8859-1") as f:
                     menubarXml = f.read()
                 self._ui_merge_id = self._ui_manager.add_ui_from_string(menubarXml)
                 self._ui_manager.ensure_update()

@@ -14,13 +14,15 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-from PHP.functions import get_namespace_by_classname
-from AutocompleteProposal import AutocompleteProposal
-from AddiksPhpIndexApp import AddiksPhpIndexApp
-from PHP.phplexer import token_name, token_num
 from gi.repository import GLib, Gtk, GtkSource, GObject
 from _thread import start_new_thread
 import re
+
+from .AutocompleteProposal import AutocompleteProposal
+from .AddiksPhpIndexApp import AddiksPhpIndexApp
+
+from .PHP.functions import get_namespace_by_classname
+from .PHP.phplexer import token_name, token_num
 
 T_STRING      = token_num("T_STRING")
 T_VARIABLE    = token_num("T_VARIABLE")

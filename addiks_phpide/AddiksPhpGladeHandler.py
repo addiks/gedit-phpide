@@ -16,14 +16,15 @@
 
 from gi.repository import GLib, Gtk, Gdk
 from os.path import expanduser
-from PHP.functions import get_namespace_by_classname
-from PHP.GraphMLExporter import GraphMLExporter
 import traceback
 import re
 import os
 import subprocess
 from subprocess import Popen, PIPE
 from _thread import start_new_thread
+
+from .PHP.functions import get_namespace_by_classname
+from .PHP.GraphMLExporter import GraphMLExporter
 
 class AddiksPhpGladeHandler:
 

@@ -211,15 +211,17 @@ class AutocompleteProvider(GObject.Object, GtkSource.CompletionProvider):
         if type(textIter) is not Gtk.TextIter:
             hasIter, textIter = textIter
         line   = textIter.get_line()+1
-        column = textIter.get_line_index()+1
+        column = textIter.get_line_index()
 
         tokens    = fileIndex.get_tokens()
-        tokenIndex = fileIndex.get_token_index_by_position(line, column)
+        tokenIndex = fileIndex.get_token_index_by_position(line, column + 1)
 
         word = ""
         if tokens[tokenIndex][0] in [T_COMMENT, T_DOC_COMMENT]:
             lineInComment = line - tokens[tokenIndex][2]
-            columnInComment = column - tokens[tokenIndex][3] - 1
+            columnInComment = column - 1
+            if lineInComment == 0:
+                columnInComment -= (tokens[tokenIndex][3] - 1)
             commentLines = tokens[tokenIndex][1].split("\n")
             commentLine = commentLines[lineInComment]
             while re.match("[a-zA-Z0-9_]", commentLine[columnInComment]):

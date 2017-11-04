@@ -14,6 +14,7 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+from .sqlite3 import Sqlite3Storage
 from .phplexer import token_get_all
 from .phplexer import token_name
 from .phplexer import token_num
@@ -112,25 +113,7 @@ class PhpIndex:
 
     def _open_index(self):
         indexPath = self._index_path
-
-        if indexPath == 'neo4j':
-            from ..storage.neo4j import Neo4jStorage
-            self._storage = Neo4jStorage()
-
-        elif indexPath == 'dummy':
-            from ..storage.dummy import DummyStorage
-            self._storage = DummyStorage()
-
-        elif indexPath.find(".sqlite3")>0:
-            from ..storage.sqlite3 import Sqlite3Storage
-            self._storage = Sqlite3Storage(indexPath)
-
-        elif indexPath.find("/")>0:
-            from ..storage.shelve import ShelveStorage
-            self._storage = ShelveStorage(indexPath)
-
-        else:
-            raise Exception("Cannot open index '"+indexPath+"'!")
+        self._storage = Sqlite3Storage(indexPath)
 
     def get_index(self):
         return self._storage

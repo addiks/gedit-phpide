@@ -181,7 +181,6 @@ class PhpFileAnalyzer:
                     className = self.get_class_is_in(tokenIndex)
                     declaration = ['member', tokens[tokenIndex][1], className]
 
-#        print(["A", declaration])
         return declaration
 
     ### TYPE DETERMINATION
@@ -418,6 +417,12 @@ class PhpFileAnalyzer:
 
         elif className in self.__use_statements:
             className = self.__use_statements[className]
+
+        elif len(className) > 0 and className[0] != "\\":
+            className = self.__namespace + "\\" + className
+
+        if className[0] != "\\":
+            className = "\\" + className
 
         return className
 

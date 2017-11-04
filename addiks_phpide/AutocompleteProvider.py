@@ -83,9 +83,6 @@ class AutocompleteProvider(GObject.Object, GtkSource.CompletionProvider):
                                 argumentRow = "$" + argumentRow
                             argumentsCode = argumentRow
                         elif len(argumentRow) > 3:
-                            print("######")
-                            print(repr(argumentRow))
-                            print("%%%%%%")
                             argumentsCode = ""
 
                         elif len(argumentRow) == 3:

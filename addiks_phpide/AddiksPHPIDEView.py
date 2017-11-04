@@ -33,6 +33,7 @@ from .PHP.PhpFileAnalyzer import PhpFileAnalyzer
 from .PHP.PhpIndex import PhpIndex
 from .PHP.IndexPathManager import IndexPathManager
 from .PHP.phplexer import token_num
+from .PHP.sqlite3 import Sqlite3Storage
 
 from .update_gtk import update_gtk, build_gtk
 
@@ -199,6 +200,7 @@ class AddiksPHPIDEView(GObject.Object, Gedit.ViewActivatable):
         line, column = self.get_current_cursor_position()
         if line != None and column != None:
             filePath, lineB, columnB = self.get_php_fileindex().get_declared_position_by_position(line, column)
+            print([filePath, lineB, columnB])
             if filePath == 'INTERNAL':
                 decType, name, className = self.get_php_fileindex().get_declaration_by_position(line, column)
                 componentName = name
@@ -512,29 +514,7 @@ class AddiksPHPIDEView(GObject.Object, Gedit.ViewActivatable):
     def create_index_storage(self):
         storage = None
         indexPath = self.get_index_filepath()
-
-        if indexPath == None:
-            pass
-
-        elif indexPath == 'neo4j':
-            from .storage.neo4j import Neo4jStorage
-            storage = Neo4jStorage()
-
-        elif indexPath == 'dummy':
-            from .storage.dummy import DummyStorage
-            storage = DummyStorage()
-
-        elif indexPath.find(".sqlite3")>0:
-            from .storage.sqlite3 import Sqlite3Storage
-            storage = Sqlite3Storage(indexPath)
-
-        elif indexPath.find("/")>0:
-            from .storage.shelve import ShelveStorage
-            storage = ShelveStorage(indexPath)
-
-        else:
-            raise Exception("Cannot open index '"+indexPath+"'!")
-
+        storage = Sqlite3Storage(indexPath)
         return storage
 
     def get_php_fileindex(self, filePath=None):

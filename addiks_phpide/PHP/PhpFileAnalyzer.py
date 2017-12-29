@@ -22,8 +22,9 @@ from .functions import get_annotations_by_doccomment
 from .phptokenparser import parse_php_tokens
 import re
 
-T_STRING   = token_num("T_STRING")
-T_VARIABLE = token_num("T_VARIABLE")
+T_STRING     = token_num("T_STRING")
+T_VARIABLE   = token_num("T_VARIABLE")
+T_INSTANCEOF = token_num("T_INSTANCEOF")
 
 class PhpFileAnalyzer:
 
@@ -162,11 +163,18 @@ class PhpFileAnalyzer:
                     className = self.get_type_by_token_index(tokenIndex-2)
                     declaration = ['class-constant', tokens[tokenIndex][1], className]
 
-                elif tokens[tokenIndex+1][1] in ['::', '->'] or tokens[tokenIndex-1][1] in ['new', 'class', 'interface', 'trait', 'extends', 'implements']:
+                elif tokens[tokenIndex+1][1] in ['::', '->'] or tokens[tokenIndex-1][1] in [
+                    'new',
+                    'class',
+                    'interface',
+                    'trait',
+                    'extends',
+                    'implements'
+                ]:
                     className = self.map_classname_by_use_statements(tokens[tokenIndex][1], tokenIndex)
                     declaration = ['class', className, None]
 
-                elif tokens[tokenIndex+1][0] == T_VARIABLE:
+                elif tokens[tokenIndex+1][0] in [T_VARIABLE] or tokens[tokenIndex-1][0] in [T_INSTANCEOF]:
                     className = self.map_classname_by_use_statements(tokens[tokenIndex][1], tokenIndex)
                     declaration = ['class', className, None]
 

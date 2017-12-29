@@ -319,12 +319,23 @@ def token_get_all(code, filePath=None):
                 code = code[1:]
 
             elif code[0] in '_\\' + string.ascii_letters:
-                tokenText = code[0]
-                index = 1
-                while len(code) > index and code[index] in '_\\' + string.ascii_letters + string.digits:
-                    tokenText += code[index]
-                    index += 1
-                code, tokens, row, col = process_token(code, tokens, T_STRING, tokenText, row, col)
+                isKeyword = False
+                keyword = None
+                for keyword in keywords:
+                    if code[0:len(keyword)] == keyword:
+                        isKeyword = True
+                        break
+
+                if isKeyword:
+                    tokenNum = token_num('T_' + keyword.upper())
+                    code, tokens, row, col = process_token(code, tokens, tokenNum, keyword, row, col)
+                else:
+                    tokenText = code[0]
+                    index = 1
+                    while len(code) > index and code[index] in '_\\' + string.ascii_letters + string.digits:
+                        tokenText += code[index]
+                        index += 1
+                    code, tokens, row, col = process_token(code, tokens, T_STRING, tokenText, row, col)
 
             elif code[0] in ['"', "'"]:
                 tokenText = code[0]
@@ -348,29 +359,18 @@ def token_get_all(code, filePath=None):
                 code, tokens, row, col = process_token(code, tokens, T_DNUMBER, tokenText, row, col)
 
             else:
-                isKeyword = False
-                keyword = None
-                for keyword in keywords:
-                    if code[0:len(keyword)] == keyword:
-                        isKeyword = True
+                isDirectToken = False
+                directToken = None
+                for directToken in directTokenMap:
+                    if code[0:len(directToken)] == directToken:
+                        isDirectToken = True
                         break
 
-                if isKeyword:
-                    tokenNum = token_num('T_' + keyword.upper())
-                    code, tokens, row, col = process_token(code, tokens, tokenNum, keyword, row, col)
+                if isDirectToken:
+                    tokenNum = directTokenMap[directToken]
+                    code, tokens, row, col = process_token(code, tokens, tokenNum, directToken, row, col)
                 else:
-                    isDirectToken = False
-                    directToken = None
-                    for directToken in directTokenMap:
-                        if code[0:len(directToken)] == directToken:
-                            isDirectToken = True
-                            break
-
-                    if isDirectToken:
-                        tokenNum = directTokenMap[directToken]
-                        code, tokens, row, col = process_token(code, tokens, tokenNum, directToken, row, col)
-                    else:
-                        code = code[1:]
+                    code = code[1:]
 
         else: # not in php-code
             beginPosition = code.find('<?')

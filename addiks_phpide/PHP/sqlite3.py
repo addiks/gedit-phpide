@@ -946,7 +946,7 @@ class Sqlite3Storage:
 
     def get_constant_position(self, constantName):
         file_path, line, column = (None, None, None, )
-        self.__query(
+        result, lastrowid = self.__query(
             "SELECT file_path, line, column "
             "FROM constants "
             "WHERE name=?",

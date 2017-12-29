@@ -200,7 +200,7 @@ class AddiksPHPIDEView(GObject.Object, Gedit.ViewActivatable):
         line, column = self.get_current_cursor_position()
         if line != None and column != None:
             filePath, lineB, columnB = self.get_php_fileindex().get_declared_position_by_position(line, column)
-            print([filePath, lineB, columnB])
+#            print([filePath, lineB, columnB])
             if filePath == 'INTERNAL':
                 decType, name, className = self.get_php_fileindex().get_declaration_by_position(line, column)
                 componentName = name

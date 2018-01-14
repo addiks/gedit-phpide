@@ -226,6 +226,12 @@ class PhpFileAnalyzer:
             typeId = typeHint
         elif docComment != None and len(docComment)>0:
             typeId = self.__get_var_type_by_doccomment(docComment)
+        if typeId == None:
+            for traitName in self.__storage.get_class_traits(namespace, className):
+                traitName = self.map_classname_by_use_statements(traitName)
+                typeId = self.get_member_type(memberName, traitName)
+                if typeId != None:
+                    break
         typeId = self.map_classname_by_use_statements(typeId)
         return typeId
 
@@ -240,6 +246,12 @@ class PhpFileAnalyzer:
             for block in phpFileIndex.__blocks:
                 if len(block)>2 and block[2] == 'method' and block[4] == className and block[5] == methodName:
                     typeId = phpFileIndex.get_routine_return_type(block[0], block[1])
+        if typeId == None:
+            for traitName in self.__storage.get_class_traits(namespace, className):
+                traitName = self.map_classname_by_use_statements(traitName)
+                typeId = self.get_method_return_type(methodName, traitName)
+                if typeId != None:
+                    break
         typeId = self.map_classname_by_use_statements(typeId)
         return typeId
 

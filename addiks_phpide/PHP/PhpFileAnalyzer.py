@@ -346,6 +346,8 @@ class PhpFileAnalyzer:
                                     varTypeId = tempVar
                                 if variable == needleVariableName:
                                     typeId = varTypeId
+                        if typeId != None and len(typeId)>0 and typeId[0] == "?":
+                            typeId = typeId[1:]
 
             # try to resolve by assignment ($foo = new \Bar();)
             if typeId == None:
@@ -414,7 +416,9 @@ class PhpFileAnalyzer:
 
     def map_classname_by_use_statements(self, className, tokenIndex=None):
 
-        if className != None:
+        if className != None and len(className) > 0:
+            if className[0] == "?":
+                className = className[1:]
             if className in ['self', 'static', 'parent'] and tokenIndex != None:
                 if className in ['self', 'static']:
                     className = self.get_class_is_in(tokenIndex)
@@ -427,7 +431,7 @@ class PhpFileAnalyzer:
             elif className in self.__use_statements:
                 className = self.__use_statements[className]
 
-            elif len(className) > 0 and className[0] != "\\" and len(self.__namespace) > 1:
+            elif className[0] != "\\" and len(self.__namespace) > 1:
                 className = self.__namespace + "\\" + className
 
             if className[0] != "\\":

@@ -16,7 +16,7 @@
 
 import re
 
-docCommentRegex = re.compile("\\@([\\\\a-zA-Z_-]+)(([\$ \ta-zA-Z0-9\\\\_-]+)*)")
+docCommentRegex = re.compile("\\@([\\\\a-zA-Z_-]+)(([\$ \ta-zA-Z0-9\?\\\\_-]+)*)")
 whitespaceRegex = re.compile("\s+")
 
 def get_annotations_by_doccomment(docComment):
@@ -36,6 +36,9 @@ def get_annotations_by_doccomment(docComment):
     return annotations
 
 def get_namespace_by_classname(className):
+    if className != None and len(className)>0 and className[0] == "?":
+        className = className[1:]
+
     namespace = "\\"
     newClassName = className
 

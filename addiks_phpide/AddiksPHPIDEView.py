@@ -98,7 +98,7 @@ class AddiksPHPIDEView(GObject.Object, Gedit.ViewActivatable):
 
                 if insertedText == ';' and tokenIndex != None:
                     # finished writing a statement?
-                    declarationType, declaredName, className = analyzer.get_declaration_by_token_index(tokenIndex)
+                    declarationType, declaredName, className = analyzer.get_declaration_by_token_index(tokenIndex, line, column)
 
                     if declarationType == 'member' and tokens[tokenIndex][1] == declaredName and not isInMethod:
                         # finished a member, add a doc-comment for that

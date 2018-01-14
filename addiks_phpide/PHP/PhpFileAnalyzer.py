@@ -22,9 +22,10 @@ from .functions import get_annotations_by_doccomment
 from .phptokenparser import parse_php_tokens
 import re
 
-T_STRING     = token_num("T_STRING")
-T_VARIABLE   = token_num("T_VARIABLE")
-T_INSTANCEOF = token_num("T_INSTANCEOF")
+T_STRING      = token_num("T_STRING")
+T_VARIABLE    = token_num("T_VARIABLE")
+T_INSTANCEOF  = token_num("T_INSTANCEOF")
+T_DOC_COMMENT = token_num("T_DOC_COMMENT")
 
 class PhpFileAnalyzer:
 
@@ -131,9 +132,9 @@ class PhpFileAnalyzer:
 
     def get_declaration_by_position(self, line, column):
         tokenIndex = self.get_token_index_by_position(line, column)
-        return self.get_declaration_by_token_index(tokenIndex)
+        return self.get_declaration_by_token_index(tokenIndex, line, column)
 
-    def get_declaration_by_token_index(self, tokenIndex):
+    def get_declaration_by_token_index(self, tokenIndex, line=None, column=None):
         tokens = self.__tokens
         declaration = [None, None, None]
 
@@ -180,6 +181,28 @@ class PhpFileAnalyzer:
 
                 else:
                     declaration = ['constant', tokens[tokenIndex][1], None]
+
+            elif tokens[tokenIndex][0] == T_DOC_COMMENT and line != None and column != None:
+                beginLine = tokens[tokenIndex][2]
+                beginColumn = tokens[tokenIndex][3]
+
+                lineInComment = line - beginLine
+
+                if lineInComment == 0:
+                    columnInComment = column - beginColumn
+                else:
+                    columnInComment = column - 1
+
+                lines = tokens[tokenIndex][1].splitlines()
+                line = lines[lineInComment]
+
+                classNameEnd   = columnInComment + line[columnInComment:].find(" ")
+                classNameBegin = columnInComment - line[columnInComment::-1].find(" ")
+
+                className = line[classNameBegin:classNameEnd].strip()
+                className = self.map_classname_by_use_statements(className, tokenIndex)
+                if className != None and len(className) > 0:
+                    declaration = ['class', className, None]
 
             elif tokens[tokenIndex][1] == ')':
                 className = self.get_type_by_token_index(tokenIndex-1)

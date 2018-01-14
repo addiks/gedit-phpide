@@ -195,8 +195,8 @@ class PhpFileAnalyzer:
 
     def get_member_type(self, memberName, className):
         typeId = None
-        if memberName[0] != "$":
-            memberName = "$" + memberName
+        if memberName != None and len(memberName)>0 and memberName[0] == "$":
+            memberName = memberName[1:]
         namespace, className = get_namespace_by_classname(className)
         visibility, is_static, filePath, line, column, docComment, typeHint = self.__storage.get_member(namespace, className, memberName)
         if typeHint != None and len(typeHint) > 0:
@@ -414,23 +414,24 @@ class PhpFileAnalyzer:
 
     def map_classname_by_use_statements(self, className, tokenIndex=None):
 
-        if className in ['self', 'static', 'parent'] and tokenIndex != None:
-            if className in ['self', 'static']:
-                className = self.get_class_is_in(tokenIndex)
+        if className != None:
+            if className in ['self', 'static', 'parent'] and tokenIndex != None:
+                if className in ['self', 'static']:
+                    className = self.get_class_is_in(tokenIndex)
 
-            elif className == 'parent':
-                className = self.get_class_is_in(tokenIndex)
-                namespace, className = get_namespace_by_classname(className)
-                className = self.__storage.get_class_parent(namespace, className)
+                elif className == 'parent':
+                    className = self.get_class_is_in(tokenIndex)
+                    namespace, className = get_namespace_by_classname(className)
+                    className = self.__storage.get_class_parent(namespace, className)
 
-        elif className in self.__use_statements:
-            className = self.__use_statements[className]
+            elif className in self.__use_statements:
+                className = self.__use_statements[className]
 
-        elif len(className) > 0 and className[0] != "\\":
-            className = self.__namespace + "\\" + className
+            elif len(className) > 0 and className[0] != "\\" and len(self.__namespace) > 1:
+                className = self.__namespace + "\\" + className
 
-        if className[0] != "\\":
-            className = "\\" + className
+            if className[0] != "\\":
+                className = "\\" + className
 
         return className
 

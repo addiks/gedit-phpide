@@ -717,6 +717,8 @@ class Sqlite3Storage:
     ### MEMBERS ###
 
     def add_member(self, filePath, namespace, className, memberName, line, column, isStatic, visibility, docComment, typeHint=None):
+        if memberName != None and len(memberName)>0 and memberName[0] == "$":
+            memberName = memberName[1:]
         classId, filePath = self.get_class_id(namespace, className)
         self.__query(
             "INSERT INTO classes_members (file_path, class_id, name, is_static, visibility, doccomment, line, column, type_hint) "

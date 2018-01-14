@@ -272,22 +272,30 @@ class PhpFileAnalyzer:
     def get_routine_return_type(self, beginTokenIndex, endTokenIndex):
         typeId = None
         tokens = self.__tokens;
-        returnTypes = []
-        tokenIndex = beginTokenIndex
 
-        for tokenNum, phpcode, line, column in tokens[beginTokenIndex:endTokenIndex]:
-            if phpcode == 'return':
-                semicolonIndex = tokenIndex+1 # TODO: rework with syntax-tree (when we have a syntax-tree)
-                for bTokenId, bPhpcode, bLine, bColumn in tokens[semicolonIndex:]:
-                    if bPhpcode == ";":
-                        break
-                    semicolonIndex+=1
-                returnedTypeId = self.get_type_by_token_index(semicolonIndex-1)
-                if returnedTypeId != None:
-                    returnTypes.append(returnedTypeId)
-            tokenIndex+=1
-        if len(returnTypes)>0:
-            typeId = returnTypes[0]
+        if tokens[beginTokenIndex-2][1] == ":" and tokens[beginTokenIndex-1][0] == T_STRING:
+            typeId = tokens[beginTokenIndex-1][1]
+
+        elif tokens[beginTokenIndex-3][1] == ":" and tokens[beginTokenIndex-2][1] == "?" and tokens[beginTokenIndex-1][0] == T_STRING:
+            typeId = tokens[beginTokenIndex-1][1]
+
+        else:
+            returnTypes = []
+            tokenIndex = beginTokenIndex
+            for tokenNum, phpcode, line, column in tokens[beginTokenIndex:endTokenIndex]:
+                if phpcode == 'return':
+                    semicolonIndex = tokenIndex+1 # TODO: rework with syntax-tree (when we have a syntax-tree)
+                    for bTokenId, bPhpcode, bLine, bColumn in tokens[semicolonIndex:]:
+                        if bPhpcode == ";":
+                            break
+                        semicolonIndex+=1
+                    returnedTypeId = self.get_type_by_token_index(semicolonIndex-1)
+                    if returnedTypeId != None:
+                        returnTypes.append(returnedTypeId)
+                tokenIndex+=1
+            if len(returnTypes)>0:
+                typeId = returnTypes[0]
+
         typeId = self.map_classname_by_use_statements(typeId)
         return typeId
 

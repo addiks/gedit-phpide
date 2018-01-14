@@ -200,14 +200,42 @@ class AddiksPHPIDEView(GObject.Object, Gedit.ViewActivatable):
         line, column = self.get_current_cursor_position()
         if line != None and column != None:
             filePath, lineB, columnB = self.get_php_fileindex().get_declared_position_by_position(line, column)
-#            print([filePath, lineB, columnB])
             if filePath == 'INTERNAL':
                 decType, name, className = self.get_php_fileindex().get_declaration_by_position(line, column)
-                componentName = name
-                if className != None:
-                    componentName = className
-                if componentName != None:
-                    url = "https://secure.php.net/" + str(componentName);
+                url = None
+                name = name.lower()
+
+                if decType == "method":
+                    if className[0] == '\\':
+                        className = className[1:]
+                    className = className.lower()
+                    if name in ["__construct", "__toString", "__sleep", "__wakeup", "__get", "__set"]:
+                        name = name[2:]
+                    url = "https://secure.php.net/manual/en/" + className + "." + name + ".php";
+
+                elif decType == "member":
+                    if className[0] == '\\':
+                        className = className[1:]
+                    className = className.lower()
+                    url = "https://secure.php.net/manual/en/class." + className + ".php#" + className + ".props." + name;
+
+                elif decType == "class":
+                    if name[0] == '\\':
+                        name = name[1:]
+                    url = "https://secure.php.net/manual/en/class." + name + ".php";
+
+                elif decType == "function":
+                    name = name.replace("_", "-")
+                    url = "https://secure.php.net/manual/en/function." + name + ".php";
+
+                else:
+                    componentName = name
+                    if className != None:
+                        componentName = className
+                    if componentName != None:
+                        url = "https://secure.php.net/" + str(componentName);
+
+                if url != None:
                     os.system("xdg-open '"+url+"'")
 
             else:

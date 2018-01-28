@@ -23,6 +23,7 @@ from .phptokenparser import parse_php_tokens
 import re
 
 T_STRING      = token_num("T_STRING")
+T_STATIC      = token_num("T_STATIC")
 T_VARIABLE    = token_num("T_VARIABLE")
 T_INSTANCEOF  = token_num("T_INSTANCEOF")
 T_DOC_COMMENT = token_num("T_DOC_COMMENT")
@@ -302,7 +303,7 @@ class PhpFileAnalyzer:
     def get_type_by_token_index(self, tokenIndex):
         tokens = self.__tokens
         typeId = None
-        if tokens[tokenIndex][0] == T_STRING:
+        if tokens[tokenIndex][0] in [T_STRING, T_STATIC]:
             if tokens[tokenIndex+1][1] == '(' and tokens[tokenIndex-1][1] != 'new':
                 if tokens[tokenIndex-1][1] in ['->', '::']: # method-call
                     className = self.get_type_by_token_index(tokenIndex-2)
@@ -477,7 +478,7 @@ class PhpFileAnalyzer:
             elif className[0] != "\\" and len(self.__namespace) > 1:
                 className = self.__namespace + "\\" + className
 
-            if className[0] != "\\":
+            if className != None and className[0] != "\\":
                 className = "\\" + className
 
         return className
@@ -527,5 +528,8 @@ class PhpFileAnalyzer:
     def get_class_is_in(self, tokenIndex):
         for block in self.__blocks:
             if len(block)>2 and block[2] == 'class' and block[0] < tokenIndex and block[1] > tokenIndex:
-                return block[4]
+                if len(self.__namespace) > 0:
+                    return "\\" + self.__namespace + "\\" + block[4]
+                else:
+                    return block[4]
         return None

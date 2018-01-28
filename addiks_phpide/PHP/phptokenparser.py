@@ -20,6 +20,7 @@ from .phplexer import token_num
 from .phplexer import keywords
 import operator
 
+T_PHP_START   = token_num('T_PHP_START')
 T_STRING      = token_num('T_STRING')
 T_VARIABLE    = token_num('T_VARIABLE')
 T_DOC_COMMENT = token_num('T_DOC_COMMENT')
@@ -96,7 +97,7 @@ def __find_blocks_classes_functions(tokens):
                     ])
 
         if token[1] in ['class', 'interface', 'trait']:
-            if tokens[tokenIndex-1][1] != '::':
+            if tokens[tokenIndex-1][0] in [T_PHP_START, T_COMMENT, T_DOC_COMMENT] or tokens[tokenIndex-1][1] in [';']:
                 classes.append(tokenIndex)
 
         if token[1] == 'function':

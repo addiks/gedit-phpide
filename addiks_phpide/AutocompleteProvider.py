@@ -229,6 +229,7 @@ class AutocompleteProvider(GObject.Object, GtkSource.CompletionProvider):
             tokenIndex -= 1
         if tokens[tokenIndex][0] == T_VARIABLE:
             word = tokens[tokenIndex][1]
+
         token = tokens[tokenIndex]
         self.colm = token[3]-1
         self.mark_position(textIter)
@@ -285,6 +286,7 @@ class AutocompleteProvider(GObject.Object, GtkSource.CompletionProvider):
             classes   = storage.get_all_classnames(True)
             consts    = storage.get_all_constants()
             functions = storage.get_all_functions()
+
             for name in classes:
                 fullClassName = name
                 if "\\" in name:

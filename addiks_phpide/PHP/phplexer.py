@@ -322,7 +322,8 @@ def token_get_all(code, filePath=None):
                 isKeyword = False
                 keyword = None
                 for keyword in keywords:
-                    if code[0:len(keyword)] == keyword:
+                    nextCharacter = code[len(keyword):len(keyword)+1]
+                    if code[0:len(keyword)] == keyword and not (nextCharacter.isalnum() or nextCharacter == "_"):
                         isKeyword = True
                         break
 

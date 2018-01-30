@@ -25,6 +25,8 @@ T_STRING      = token_num('T_STRING')
 T_VARIABLE    = token_num('T_VARIABLE')
 T_DOC_COMMENT = token_num('T_DOC_COMMENT')
 T_COMMENT     = token_num('T_COMMENT')
+T_FINAL       = token_num('T_FINAL')
+T_ABSTRACT    = token_num('T_ABSTRACT')
 
 def parse_php_tokens(tokens):
 
@@ -97,7 +99,7 @@ def __find_blocks_classes_functions(tokens):
                     ])
 
         if token[1] in ['class', 'interface', 'trait']:
-            if tokens[tokenIndex-1][0] in [T_PHP_START, T_COMMENT, T_DOC_COMMENT] or tokens[tokenIndex-1][1] in [';']:
+            if tokens[tokenIndex-1][0] in [T_PHP_START, T_COMMENT, T_DOC_COMMENT, T_FINAL, T_ABSTRACT] or tokens[tokenIndex-1][1] in [';']:
                 classes.append(tokenIndex)
 
         if token[1] == 'function':
